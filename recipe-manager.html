@@ -416,6 +416,23 @@
   }
   .settings-btn:hover { background: var(--surface2); color: var(--text); }
 
+  /* ===== LANG TOGGLE ===== */
+  .lang-btn {
+    font-size: 13px !important;
+    font-weight: 600;
+    padding: 6px 10px !important;
+  }
+  .lang-opt {
+    color: var(--text-muted);
+    transition: color .15s;
+  }
+  .lang-opt.active { color: var(--primary); }
+  .lang-sep {
+    color: var(--text-muted);
+    margin: 0 4px;
+    opacity: 0.5;
+  }
+
   /* ===== PARSE SECTION ===== */
   .parse-section {
     border: 1px solid var(--border);
@@ -801,7 +818,7 @@
 <header>
   <div class="logo"><span>🍳</span> <span data-i18n="app.title">レシピ管理</span></div>
   <div style="display:flex;align-items:center;gap:4px">
-    <button class="settings-btn" id="lang-btn" onclick="toggleLang()" title="Language / 言語" style="font-size:13px;font-weight:600">JA</button>
+    <button class="settings-btn lang-btn" id="lang-btn" onclick="toggleLang()" title="Language / 言語"><span id="lang-ja-opt" class="lang-opt">日本語</span><span class="lang-sep">/</span><span id="lang-en-opt" class="lang-opt">EN</span></button>
     <button class="settings-btn" onclick="openSettingsModal()" data-i18n-title="settings.title" title="設定">⚙</button>
     <button class="btn btn-primary" onclick="openAddModal()" data-i18n="action.add_recipe">＋ レシピを追加</button>
   </div>
@@ -811,7 +828,7 @@
   <div id="backup-banner">
     <div class="banner-msg" id="backup-banner-msg"></div>
     <div class="banner-actions">
-      <button class="btn btn-ghost btn-sm" onclick="dismissBackupBanner()">閉じる</button>
+      <button class="btn btn-ghost btn-sm" onclick="dismissBackupBanner()" data-i18n="action.close">閉じる</button>
     </div>
   </div>
   <div class="toolbar">
@@ -1107,7 +1124,7 @@
   </div>
 </div>
 
-<div id="toast"><span id="toast-msg"></span><button id="toast-undo-btn" style="display:none" onclick="undoDelete()">元に戻す</button></div>
+<div id="toast"><span id="toast-msg"></span><button id="toast-undo-btn" style="display:none" onclick="undoDelete()" data-i18n="action.undo">元に戻す</button></div>
 
 <script>
 // ===== I18N =====
@@ -1212,6 +1229,30 @@ const I18N = {
     'welcome.ai_body': 'Google Gemini（無料枠あり）または ChatGPT の APIキーを設定すると、URLを貼るだけでタイトル・材料・手順を自動抽出できます。APIキーなしでも手動でレシピを登録できます。',
     'welcome.btn_setup': '⚙ AIキーを設定して始める',
     'welcome.btn_skip': 'まずは手動で始める →',
+
+    // === Toast / Alert ===
+    'toast.recipe_added': 'レシピを追加しました',
+    'toast.recipe_updated': 'レシピを更新しました',
+    'toast.recipe_deleted': '「{title}」を削除しました',
+    'toast.delete_undone': '削除を取り消しました',
+    'toast.exported': '{n} 件のレシピをエクスポートしました',
+    'toast.imported': '{n} 件のレシピをインポートしました',
+    'toast.import_no_new': '追加できる新しいレシピがありませんでした（重複またはデータ不正）',
+    'toast.settings_saved': '設定を保存しました',
+    'toast.usage_reset': '使用量をリセットしました',
+    'toast.no_api_key': 'APIキーは登録されていません',
+    'toast.api_key_deleted': 'APIキーを削除しました',
+    'alert.save_failed': '保存に失敗しました: ',
+    'alert.import_failed': 'インポート失敗: ',
+    'action.undo': '元に戻す',
+
+    // === Backup Banner ===
+    'banner.no_backup': '⚠ まだバックアップが作成されていません。ツールバーの「エクスポート」からレシピデータを保存しておくことをお勧めします。',
+    'banner.backup_old': '最後のエクスポートから {days} 日が経過しています。ツールバーの「エクスポート」から定期的にバックアップしてください。',
+
+    // === Validation ===
+    'error.title_required': 'タイトルを入力してください',
+    'error.url_invalid': 'http:// または https:// から始まる正しいURLを入力してください',
   },
   en: {
     'app.title': 'Recipe Manager',
@@ -1312,6 +1353,30 @@ const I18N = {
     'welcome.ai_body': 'Set up a Google Gemini (free tier available) or ChatGPT API key, and you can extract recipes from any URL automatically. You can also add recipes manually without an API key.',
     'welcome.btn_setup': '⚙ Set up AI key',
     'welcome.btn_skip': 'Start manually →',
+
+    // === Toast / Alert ===
+    'toast.recipe_added': 'Recipe added',
+    'toast.recipe_updated': 'Recipe updated',
+    'toast.recipe_deleted': '"{title}" was deleted',
+    'toast.delete_undone': 'Delete undone',
+    'toast.exported': 'Exported {n} recipes',
+    'toast.imported': 'Imported {n} recipes',
+    'toast.import_no_new': 'No new recipes to add (duplicate or invalid data)',
+    'toast.settings_saved': 'Settings saved',
+    'toast.usage_reset': 'Usage count reset',
+    'toast.no_api_key': 'No API key is registered',
+    'toast.api_key_deleted': 'API key deleted',
+    'alert.save_failed': 'Save failed: ',
+    'alert.import_failed': 'Import failed: ',
+    'action.undo': 'Undo',
+
+    // === Backup Banner ===
+    'banner.no_backup': '⚠ No backup has been created yet. We recommend saving your recipes via the "Export" button in the toolbar.',
+    'banner.backup_old': '{days} days have passed since the last export. Please back up regularly using the "Export" button.',
+
+    // === Validation ===
+    'error.title_required': 'Please enter a title',
+    'error.url_invalid': 'Please enter a valid URL starting with http:// or https://',
   }
 };
 
@@ -1354,9 +1419,14 @@ function applyI18n() {
   document.documentElement.lang = loadLang();
   // ブラウザタブのタイトルも更新
   document.title = t('document.title');
-  // 言語ボタン表示更新
-  const btn = document.getElementById('lang-btn');
-  if (btn) btn.textContent = loadLang() === 'ja' ? 'EN' : 'JA';
+  // 言語ボタン表示更新（日本語 / EN の両方表示・現在の言語をハイライト）
+  const jaOpt = document.getElementById('lang-ja-opt');
+  const enOpt = document.getElementById('lang-en-opt');
+  if (jaOpt && enOpt) {
+    const current = loadLang();
+    jaOpt.classList.toggle('active', current === 'ja');
+    enOpt.classList.toggle('active', current === 'en');
+  }
 }
 
 function setLang(lang) {
@@ -1366,6 +1436,7 @@ function setLang(lang) {
   // 動的レンダリング部分も再描画
   if (typeof renderList === 'function') renderList();
   if (typeof renderTokenUsage === 'function') renderTokenUsage();
+  if (typeof checkBackupBanner === 'function') checkBackupBanner();
 }
 
 function toggleLang() {
@@ -1443,10 +1514,21 @@ async function initRecipeStore() {
         }
       }
       localStorage.setItem(MIGRATION_FLAG, '1');
-      // 移行完了後も旧データはバックアップとして残しておく（次回バージョンで削除予定）
     }
 
     _recipesCache = Array.isArray(stored) ? stored : [];
+
+    // 旧 LocalStorage バックアップの削除
+    // 条件: 移行完了済み AND 旧データがまだ残っている AND IDB から正常に値が取れている
+    // → IDB が動かない環境では LEGACY を読むフォールバックがあるので、削除しない
+    if (
+      localStorage.getItem(MIGRATION_FLAG) === '1' &&
+      localStorage.getItem(LEGACY_STORAGE_KEY) !== null &&
+      Array.isArray(stored)
+    ) {
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      console.log('[cleanup] 旧 LocalStorage バックアップ（recipe_manager_v1）を削除しました');
+    }
   } catch (e) {
     console.error('[idb] 初期化エラー、LocalStorage にフォールバック', e);
     // IndexedDB 不可な環境では旧 LocalStorage から読む（最低限動作する）
@@ -1470,7 +1552,7 @@ function saveRecipes(recipes) {
   // IDB へは非同期で書き込み（fire-and-forget、エラーは toast / alert で通知）
   idbPut(IDB_KEY, recipes).catch((e) => {
     console.error('[idb] 保存エラー', e);
-    alert('保存に失敗しました: ' + (e && e.message ? e.message : e));
+    alert(t('alert.save_failed') + (e && e.message ? e.message : e));
   });
 }
 
@@ -1489,14 +1571,14 @@ function checkBackupBanner() {
   const msg = document.getElementById('backup-banner-msg');
 
   if (!lastExport) {
-    msg.textContent = '⚠ まだバックアップが作成されていません。ツールバーの「エクスポート」からレシピデータを保存しておくことをお勧めします。';
+    msg.textContent = t('banner.no_backup');
     banner.classList.add('show');
     return;
   }
 
   const daysSince = Math.floor((Date.now() - Number(lastExport)) / (1000 * 60 * 60 * 24));
   if (daysSince >= BACKUP_INTERVAL_DAYS) {
-    msg.textContent = `最後のエクスポートから ${daysSince} 日が経過しています。ツールバーの「エクスポート」から定期的にバックアップしてください。`;
+    msg.textContent = t('banner.backup_old', { days: daysSince });
     banner.classList.add('show');
   } else {
     banner.classList.remove('show');
@@ -1522,7 +1604,7 @@ function exportRecipes() {
   URL.revokeObjectURL(a.href);
   localStorage.setItem(LAST_EXPORT_STORAGE, Date.now());
   document.getElementById('backup-banner').classList.remove('show');
-  showToast(`${data.recipes.length} 件のレシピをエクスポートしました`);
+  showToast(t('toast.exported', { n: data.recipes.length }));
 }
 
 function importRecipes(input) {
@@ -1555,15 +1637,15 @@ function importRecipes(input) {
             : []
         }));
       if (toAdd.length === 0) {
-        showToast('追加できる新しいレシピがありませんでした（重複またはデータ不正）');
+        showToast(t('toast.import_no_new'));
         return;
       }
       saveRecipes([...current, ...toAdd]);
       recipes = loadRecipes();
       renderList();
-      showToast(`${toAdd.length} 件のレシピをインポートしました`);
+      showToast(t('toast.imported', { n: toAdd.length }));
     } catch (err) {
-      alert('インポート失敗: ' + err.message);
+      alert(t('alert.import_failed') + err.message);
     } finally {
       input.value = '';
     }
@@ -1740,9 +1822,9 @@ function saveRecipe() {
   const url   = document.getElementById('f-url').value.trim();
 
   let hasError = false;
-  if (!title) { setFieldError('f-title', 'error-title', 'タイトルを入力してください'); hasError = true; }
+  if (!title) { setFieldError('f-title', 'error-title', t('error.title_required')); hasError = true; }
   if (url && safeUrl(url) === '#') {
-    setFieldError('f-url', 'error-url', 'http:// または https:// から始まる正しいURLを入力してください'); hasError = true;
+    setFieldError('f-url', 'error-url', t('error.url_invalid')); hasError = true;
   }
   if (hasError) return;
 
@@ -1757,14 +1839,14 @@ function saveRecipe() {
     if (idx !== -1) {
       recipes[idx] = { ...recipes[idx], title, url, memo, baseServings, source, ingredients, steps };
     }
-    showToast('レシピを更新しました');
+    showToast(t('toast.recipe_updated'));
   } else {
     recipes.unshift({
       id: generateId(),
       title, url, memo, baseServings, source, ingredients, steps,
       createdAt: Date.now()
     });
-    showToast('レシピを追加しました');
+    showToast(t('toast.recipe_added'));
   }
 
   saveRecipes(recipes);
@@ -1864,7 +1946,7 @@ function deleteRecipe() {
   saveRecipes(recipes);
   closeModal('detail-modal');
   renderList();
-  showToastWithUndo(`「${escHtml(r.title)}」を削除しました`);
+  showToastWithUndo(t('toast.recipe_deleted', { title: escHtml(r.title) }));
 }
 
 // ===== WELCOME MODAL =====
@@ -1934,7 +2016,7 @@ function undoDelete() {
   saveRecipes(recipes);
   renderList();
   deletedSnapshot = null;
-  showToast('削除を取り消しました');
+  showToast(t('toast.delete_undone'));
 }
 
 // ===== UTIL =====
@@ -1971,7 +2053,7 @@ function addTokenUsage(inputTokens, outputTokens) {
 function resetTokenUsage() {
   localStorage.removeItem(TOKEN_STORAGE);
   renderTokenUsage();
-  showToast('使用量をリセットしました');
+  showToast(t('toast.usage_reset'));
 }
 
 function renderTokenUsage() {
@@ -2046,7 +2128,7 @@ function saveSettings() {
   localStorage.setItem(CHATGPT_MODEL_STORAGE, document.getElementById('s-chatgpt-model').value.trim() || 'gpt-4o');
   // その他
   localStorage.setItem(YT_AUTOFETCH_STORAGE, document.getElementById('s-yt-autofetch').checked);
-  showToast('設定を保存しました');
+  showToast(t('toast.settings_saved'));
   closeModal('settings-modal');
 }
 
@@ -2067,12 +2149,12 @@ function toggleKeyVisibility(inputId, btnId) {
 function deleteProviderKey(provider, inputId) {
   const storageMap = { gemini: API_KEY_STORAGE, chatgpt: CHATGPT_KEY_STORAGE };
   const storageKey = storageMap[provider];
-  if (!localStorage.getItem(storageKey)) { showToast('APIキーは登録されていません'); return; }
+  if (!localStorage.getItem(storageKey)) { showToast(t('toast.no_api_key')); return; }
   localStorage.removeItem(storageKey);
   const inp = document.getElementById(inputId);
   inp.value = '';
   inp.type = 'password';
-  showToast('APIキーを削除しました');
+  showToast(t('toast.api_key_deleted'));
 }
 
 // ===== PARSE SECTION TOGGLE =====

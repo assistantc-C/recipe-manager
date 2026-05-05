@@ -1,32 +1,192 @@
-# ===== Personal strategy notes (not for public release) =====
+# ============================================================
+# .gitignore — Recipe Manager
+# 「うっかり公開リポジトリに上げてしまわない」ためのリスク対策。
+# カテゴリは上から順に「漏れた時の被害が大きい順」。
+# ============================================================
+
+
+# ===== 1. Secrets / Credentials（最重要：流出すると即被害）=====
+# API キー・トークン等を含む可能性があるファイル形式
+.env
+.env.*
+!.env.example                       # サンプルテンプレートだけは公開可
+*.env
+secrets.json
+secrets.yaml
+secrets.yml
+credentials.json
+credentials.yaml
+credentials.yml
+*.pem                                # 秘密鍵
+*.key                                # 秘密鍵
+*.p12                                # PKCS#12 証明書
+*.pfx                                # Windows 証明書
+*.cer                                # 証明書（公開用が多いが念のため）
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*-private.*
+*.private.*
+*.token
+*.apikey
+api-key.*
+apikey.*
+
+# 過去のうっかり対策：「key」「secret」「token」を含むファイル名は警戒
+# （誤検知あり得るので必要に応じて個別 unignore）
+**/secret_*
+**/secret-*
+**/_secret*
+**/.secret*
+
+
+# ===== 2. レシピアプリ固有：個人データのエクスポート =====
+# アプリの「エクスポート」機能で生成される JSON。
+# 個人のレシピ集が含まれるため公開リポジトリに上げない。
+# デフォルトファイル名: recipes_YYYY-MM-DD.json
+recipes_*.json
+recipe-export-*.json
+recipes-backup-*.json
+*-recipes-backup.*
+
+# ブラウザの IndexedDB / LocalStorage を直接エクスポートしたファイル
+indexeddb-export-*.json
+localstorage-export-*.json
+
+
+# ===== 3. 開発者個人のメモ・設計書（ソース外）=====
 # 競合調査・戦略決定など、開発者個人の思考メモは公開リポジトリから除外
 research-*.md
 decisions-*.md
+notes/
+memo/
+memos/
+.notes/
+*-personal.*
+personal-*.*
+PERSONAL.*
+PRIVATE.*
+NOTES.local.*
 
-# ===== OS / Editor artifacts =====
+
+# ===== 4. ローカル環境固有の設定 =====
+# 個人のパス・ホスト名・ポート番号等を含む可能性
+config.local.*
+local-settings.*
+local.json
+*.local.json
+*.local.yaml
+*.local.yml
+
+
+# ===== 5. ビルド成果物・依存物 =====
+node_modules/
+bower_components/
+jspm_packages/
+dist/
+build/
+out/
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.vite/
+
+# パッケージマネージャのロックファイル：チームポリシーによる
+# （個人開発の場合は通常コミットする）
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+
+# ===== 6. OS / エディタ固有のアーティファクト =====
+# macOS
 .DS_Store
-Thumbs.db
-desktop.ini
-*.swp
-*.swo
-*~
+.AppleDouble
+.LSOverride
+Icon
 
-# Visual Studio Code
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Visual Studio Code（個人パス・拡張設定が混入することがある）
 .vscode/
 *.code-workspace
 
-# JetBrains IDEs
+# JetBrains IDEs (IntelliJ, WebStorm, PyCharm, etc.)
 .idea/
+*.iml
 
-# ===== Build / Dependency artifacts (将来用) =====
-node_modules/
-dist/
-build/
-.cache/
+# Sublime / Atom
+*.sublime-workspace
+*.sublime-project
+.atom/
 
-# ===== Logs / Temp =====
+# Vim / Emacs
+*.swp
+*.swo
+*.swn
+*.bak
+*~
+\#*\#
+.\#*
+
+
+# ===== 7. ログ / テンプ =====
 *.log
+logs/
 *.tmp
+*.temp
+tmp/
+temp/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+
+# ===== 8. テスト・カバレッジ成果物 =====
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+
+
+# ===== 9. その他のうっかり対策 =====
+# 圧縮ファイル（バックアップで圧縮したものが紛れ込む事故）
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# データベースダンプ（ありえないが念のため）
+*.sqlite
+*.sqlite3
+*.db
+*.sql.gz
+dump.sql
+dump-*.sql
+
+# クッキー・セッション
+cookies.txt
+*-cookies.*
+*.session
+session-*.json
+
+
+# ===== 10. 例外（強制的に追跡したいファイル）=====
+# 上のパターンで除外されるけど、特定ファイルだけ含めたい時
+# !path/to/keep-this-file.example

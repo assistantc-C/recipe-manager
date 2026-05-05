@@ -1,0 +1,2518 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レシピ管理アプリ</title>
+
+<!-- ===== PWA ===== -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#e07b39">
+<!-- iOS 対応 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="レシピ">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --primary: #e07b39;
+    --primary-dark: #c4622a;
+    --bg: #faf8f5;
+    --surface: #ffffff;
+    --surface2: #f5f2ee;
+    --border: #e8e2d9;
+    --text: #2c2c2c;
+    --text-muted: #8a8078;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.15);
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ===== HEADER ===== */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .logo {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo span { font-size: 22px; }
+
+  /* ===== MAIN LAYOUT ===== */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px;
+  }
+
+  /* ===== TOOLBAR ===== */
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .search-box {
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+  }
+  .search-box input[type=text] {
+    width: 100%;
+    padding: 10px 16px 10px 42px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-box input[type=text]:focus { border-color: var(--primary); }
+  .search-box::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    transform: translateY(-50%);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8078' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>");
+    background-repeat: no-repeat;
+    background-size: contain;
+    pointer-events: none;
+  }
+
+  /* モバイル：ツールバーを縦積みに */
+  @media (max-width: 600px) {
+    .toolbar { gap: 8px; }
+    .search-box { flex-basis: 100%; }
+    .toolbar > select { width: 100% !important; }
+    .toolbar .btn { flex: 1; justify-content: center; }
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-danger {
+    background: #fee2e2;
+    color: #dc2626;
+    border: none;
+  }
+  .btn-danger:hover { background: #fecaca; }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--surface2); border-color: var(--text-muted); }
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state .icon { font-size: 56px; margin-bottom: 16px; }
+  .empty-state h3 { font-size: 18px; margin-bottom: 8px; color: var(--text); }
+  .empty-state p { font-size: 14px; }
+
+  /* ===== RECIPE GRID ===== */
+  .recipe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .recipe-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+  .recipe-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .card-thumb {
+    height: 8px;
+    background: linear-gradient(90deg, var(--primary), #f0b070);
+  }
+
+  .card-body { padding: 16px; }
+
+  .card-source {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+  .source-youtube { background: #fee2e2; color: #dc2626; }
+  .source-web { background: #dbeafe; color: #2563eb; }
+  .source-other { background: var(--surface2); color: var(--text-muted); }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-memo {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 12px;
+    min-height: 38px;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .card-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tag {
+    padding: 2px 8px;
+    background: var(--surface2);
+    border-radius: 20px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 24px 16px;
+    overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 600px;
+    box-shadow: var(--shadow-lg);
+    margin: auto;
+    animation: slideUp 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 48px);
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .modal-header h2 { font-size: 18px; }
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: var(--text-muted);
+    line-height: 1;
+    padding: 4px;
+    border-radius: 6px;
+  }
+  .modal-close:hover { background: var(--surface2); color: var(--text); }
+
+  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .modal-footer {
+    padding: 16px 24px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  /* ===== FORM ===== */
+  .form-group { margin-bottom: 18px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  label .required {
+    color: var(--primary);
+    margin-left: 2px;
+  }
+  input[type=text], input[type=url], input[type=number], textarea, select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--primary); }
+  textarea { resize: vertical; min-height: 72px; }
+  .form-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ===== YOUTUBE AUTO-FETCH ===== */
+  .url-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    margin-top: 6px;
+    min-height: 20px;
+  }
+  .url-status.loading { color: var(--text-muted); }
+  .url-status.success { color: #16a34a; }
+  .url-status.error   { color: #dc2626; }
+  .url-status .spinner {
+    width: 12px; height: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .title-autofill-badge {
+    display: inline-block;
+    font-size: 11px;
+    color: #16a34a;
+    background: #dcfce7;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .yt-desc-hint {
+    display: none;
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: #fef9ec;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #92400e;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .yt-desc-hint.visible { display: flex; }
+  .yt-desc-hint .yt-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .yt-desc-hint p { margin: 0 0 6px; line-height: 1.5; }
+  .btn-yt-desc {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .btn-yt-desc:hover { background: #b91c1c; }
+
+  /* ===== SETTINGS BUTTON ===== */
+  .settings-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 20px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    line-height: 1;
+    margin-right: 8px;
+  }
+  .settings-btn:hover { background: var(--surface2); color: var(--text); }
+
+  /* ===== PARSE SECTION ===== */
+  .parse-section {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 18px;
+    overflow: hidden;
+  }
+  .parse-toggle {
+    width: 100%;
+    background: var(--surface2);
+    border: none;
+    padding: 10px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: left;
+    gap: 8px;
+  }
+  .parse-toggle:hover { background: #ede8e0; }
+  .parse-toggle .toggle-icon {
+    font-size: 11px;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .parse-toggle .toggle-icon.open { transform: rotate(180deg); }
+  .parse-body { padding: 14px; border-top: 1px solid var(--border); }
+  .parse-status {
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .parse-status.loading { color: var(--text-muted); }
+  .parse-status.success { color: #16a34a; }
+  .parse-status.error   { color: #dc2626; }
+
+  /* ===== STEPS SECTION (form) ===== */
+  .steps-section { margin-top: 18px; }
+  .steps-section h4 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .step-row {
+    display: grid;
+    grid-template-columns: 28px 1fr 32px;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: flex-start;
+  }
+  .step-num {
+    width: 28px;
+    height: 28px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 9px;
+  }
+  .step-row textarea { min-height: 56px; resize: vertical; }
+  .remove-step {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 18px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    margin-top: 9px;
+  }
+  .remove-step:hover { background: #fee2e2; color: #dc2626; }
+
+  /* ===== STEPS SECTION (detail) ===== */
+  .detail-steps { margin-top: 24px; }
+  .detail-steps h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+  }
+  .step-item {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+    align-items: flex-start;
+  }
+  .step-item-num {
+    width: 26px;
+    height: 26px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-item-text { font-size: 14px; line-height: 1.7; padding-top: 2px; }
+
+  /* ===== TOKEN STATS ===== */
+  .token-stat {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .token-val {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.2;
+  }
+  .token-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ===== API KEY WARNING ===== */
+  .api-key-warning {
+    background: #fef9ec;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #92400e;
+    line-height: 1.6;
+    margin-top: 8px;
+  }
+  .api-key-warning a { color: var(--primary); }
+
+  /* ===== INGREDIENT TABLE ===== */
+  .ingredient-section { margin-top: 4px; }
+  .ingredient-section h4 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .ingredient-row {
+    display: grid;
+    grid-template-columns: 1fr 80px 70px 32px;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .ingredient-row input { margin: 0; }
+  .remove-ing {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+  }
+  .remove-ing:hover { background: #fee2e2; color: #dc2626; }
+
+  /* ===== DETAIL MODAL ===== */
+  .detail-url {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--primary);
+    font-size: 13px;
+    text-decoration: none;
+    padding: 6px 12px;
+    background: #fef3ec;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .detail-url:hover { background: #fde8d6; }
+
+  .detail-memo {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.7;
+    background: var(--surface2);
+    padding: 12px 14px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+
+  .serving-adjuster {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .serving-adjuster label {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  .serving-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .serving-btn {
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--primary);
+    transition: all 0.15s;
+  }
+  .serving-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+  #detail-servings {
+    width: 52px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 16px;
+  }
+  .serving-note { font-size: 12px; color: var(--text-muted); }
+
+  .ingredient-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .ingredient-table th {
+    text-align: left;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 2px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .ingredient-table td {
+    padding: 10px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ingredient-table tr:last-child td { border-bottom: none; }
+  .ingredient-table .amount {
+    font-weight: 700;
+    color: var(--primary);
+    text-align: right;
+  }
+  .ingredient-table .unit {
+    color: var(--text-muted);
+    font-size: 13px;
+    padding-left: 4px;
+  }
+  .no-ingredients {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 20px;
+  }
+
+  /* ===== STATS BAR ===== */
+  .stats-bar {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--text-muted);
+    align-items: center;
+  }
+  .stats-bar strong { color: var(--text); }
+
+  /* ===== BACKUP BANNER ===== */
+  #backup-banner {
+    display: none;
+    background: #fff8e7;
+    border: 1px solid #f0c060;
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #6b4c00;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  #backup-banner.show { display: flex; }
+  #backup-banner .banner-msg { flex: 1; min-width: 200px; }
+  #backup-banner .banner-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+  /* ===== FIELD ERROR ===== */
+  .field-error {
+    color: #e05252;
+    font-size: 12px;
+    margin-top: 4px;
+    display: none;
+  }
+  .field-error.show { display: block; }
+  input.input-error { border-color: #e05252 !important; }
+
+  /* ===== TOAST ===== */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #1a1a1a;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 999;
+    transition: transform 0.3s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast-undo-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.5);
+    color: white;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #toast-undo-btn:hover { background: rgba(255,255,255,0.15); }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 500px) {
+    .form-row { grid-template-columns: 1fr; }
+    .ingredient-row { grid-template-columns: 1fr 72px 60px 32px; }
+    .modal-body, .modal-footer, .modal-header { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span>🍳</span> <span data-i18n="app.title">レシピ管理</span></div>
+  <div style="display:flex;align-items:center;gap:4px">
+    <button class="settings-btn" id="lang-btn" onclick="toggleLang()" title="Language / 言語" style="font-size:13px;font-weight:600">JA</button>
+    <button class="settings-btn" onclick="openSettingsModal()" data-i18n-title="settings.title" title="設定">⚙</button>
+    <button class="btn btn-primary" onclick="openAddModal()" data-i18n="action.add_recipe">＋ レシピを追加</button>
+  </div>
+</header>
+
+<div class="container">
+  <div id="backup-banner">
+    <div class="banner-msg" id="backup-banner-msg"></div>
+    <div class="banner-actions">
+      <button class="btn btn-ghost btn-sm" onclick="dismissBackupBanner()">閉じる</button>
+    </div>
+  </div>
+  <div class="toolbar">
+    <div class="search-box">
+      <input type="text" id="search-input" data-i18n-placeholder="search.placeholder" placeholder="タイトル・メモで検索..." oninput="renderList()">
+    </div>
+    <select id="filter-source" onchange="renderList()" style="width:130px">
+      <option value="" data-i18n="filter.all_sources">すべてのソース</option>
+      <option value="youtube">YouTube</option>
+      <option value="web" data-i18n="filter.website">Webサイト</option>
+      <option value="other" data-i18n="filter.other">その他</option>
+    </select>
+    <button class="btn btn-secondary" onclick="exportRecipes()" data-i18n-title="action.export_tip" data-i18n="action.export" title="レシピをJSONファイルに書き出す">エクスポート</button>
+    <label class="btn btn-secondary" style="cursor:pointer;margin:0" data-i18n-title="action.import_tip" title="JSONファイルからレシピを読み込む">
+      <span data-i18n="action.import">インポート</span>
+      <input type="file" accept=".json" style="display:none" onchange="importRecipes(this)">
+    </label>
+  </div>
+
+  <div class="stats-bar" id="stats-bar"></div>
+
+  <div id="recipe-list"></div>
+</div>
+
+<!-- ===== ADD/EDIT MODAL ===== -->
+<div class="modal-overlay" id="add-modal" onclick="handleOverlayClick(event,'add-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title" data-i18n="modal.add_title">レシピを追加</h2>
+      <button class="modal-close" onclick="closeModal('add-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>URL <span class="required">*</span></label>
+        <input type="url" id="f-url" placeholder="https://...">
+        <div class="field-error" id="error-url"></div>
+        <div class="form-hint" data-i18n="form.url_hint">YouTubeまたはWebサイトのURLを入力</div>
+        <div class="url-status" id="url-fetch-status"></div>
+      </div>
+      <div class="form-group">
+        <label>
+          <span data-i18n="form.title">タイトル</span> <span class="required">*</span>
+          <span class="title-autofill-badge" id="title-autofill-badge" style="display:none" data-i18n="form.title_autofilled">自動取得</span>
+        </label>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="f-title" data-i18n-placeholder="form.title_placeholder" placeholder="例：簡単チャーハン" style="flex:1">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="manualTranslateTitle()" data-i18n-title="action.translate_title" title="現在の表示言語に翻訳" style="flex-shrink:0;padding:6px 10px;font-size:14px">🔄</button>
+        </div>
+        <div class="field-error" id="error-title"></div>
+      </div>
+
+      <!-- ===== AI PARSE SECTION ===== -->
+      <div class="parse-section">
+        <button class="parse-toggle" type="button" onclick="toggleParseSection()">
+          <span data-i18n="parse.toggle">✨ 概要欄テキストを貼り付けてAIで自動解析</span>
+          <span class="toggle-icon" id="parse-toggle-icon">▼</span>
+        </button>
+        <div class="parse-body" id="parse-body" style="display:none">
+          <div id="parse-yt-btn-wrap" style="display:none;margin-bottom:10px">
+            <a id="parse-yt-link" href="#" target="_blank" rel="noopener" class="btn-yt-desc" data-i18n="parse.yt_open">▶ YouTubeで概要欄を開く</a>
+            <span style="font-size:12px;color:var(--text-muted);margin-left:8px" data-i18n="parse.yt_hint">→ コピーして下に貼り付けてください</span>
+          </div>
+          <textarea id="f-paste-text" data-i18n-placeholder="parse.placeholder" placeholder="YouTubeの概要欄やレシピページのテキストをここに貼り付けてください。レシピ名・材料・作り方を自動で入力します。" style="min-height:120px"></textarea>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" id="parse-btn" onclick="runParseWithAI()" data-i18n="parse.run">✨ AIで解析する</button>
+            <div class="parse-status" id="parse-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label data-i18n="form.servings">基準人数</label>
+          <input type="number" id="f-servings" min="1" max="99" value="2" style="width:100%">
+        </div>
+        <div class="form-group">
+          <label data-i18n="form.source">ソース</label>
+          <select id="f-source">
+            <option value="youtube" data-i18n="form.source.youtube">YouTube</option>
+            <option value="web" data-i18n="form.source.web">Webサイト</option>
+            <option value="other" data-i18n="form.source.other">その他</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label data-i18n="form.memo">メモ</label>
+        <textarea id="f-memo" data-i18n-placeholder="form.memo_placeholder" placeholder="ポイント・感想・アレンジなど..."></textarea>
+      </div>
+
+      <div class="ingredient-section">
+        <h4>
+          <span data-i18n="section.ingredients">材料</span>
+          <button class="btn btn-ghost btn-sm" onclick="addIngredientRow()" data-i18n="action.add_ingredient">＋ 材料を追加</button>
+        </h4>
+        <div style="display:grid;grid-template-columns:1fr 80px 70px 32px;gap:8px;margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--text-muted);font-weight:600;" data-i18n="ing.name">材料名</span>
+          <span style="font-size:12px;color:var(--text-muted);font-weight:600;" data-i18n="ing.amount">分量</span>
+          <span style="font-size:12px;color:var(--text-muted);font-weight:600;" data-i18n="ing.unit">単位</span>
+          <span></span>
+        </div>
+        <div id="ingredient-rows"></div>
+      </div>
+
+      <div class="steps-section">
+        <h4>
+          <span data-i18n="section.steps">作り方</span>
+          <button class="btn btn-ghost btn-sm" onclick="addStepRow()" data-i18n="action.add_step">＋ 手順を追加</button>
+        </h4>
+        <div id="step-rows"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add-modal')" data-i18n="action.cancel">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveRecipe()" data-i18n="action.save">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DETAIL MODAL ===== -->
+<div class="modal-overlay" id="detail-modal" onclick="handleOverlayClick(event,'detail-modal')">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div>
+        <div id="detail-source-badge"></div>
+        <h2 id="detail-title" style="margin-top:4px"></h2>
+      </div>
+      <button class="modal-close" onclick="closeModal('detail-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <a id="detail-url" class="detail-url" href="#" target="_blank" rel="noopener">🔗 <span id="detail-url-text"></span></a>
+
+      <div id="detail-memo-wrap" class="detail-memo" style="display:none"></div>
+
+      <div id="detail-ingredients-section">
+        <div class="serving-adjuster">
+          <label data-i18n="detail.servings_label">人数：</label>
+          <div class="serving-control">
+            <button class="serving-btn" onclick="changeServing(-1)">−</button>
+            <input type="number" id="detail-servings" min="1" max="99" value="2" oninput="renderIngredients()">
+            <button class="serving-btn" onclick="changeServing(1)">＋</button>
+          </div>
+          <span class="serving-note" id="serving-note"></span>
+        </div>
+        <table class="ingredient-table">
+          <thead>
+            <tr>
+              <th data-i18n="ing.name">材料名</th>
+              <th style="text-align:right" data-i18n="ing.amount">分量</th>
+              <th style="width:60px" data-i18n="ing.unit">単位</th>
+            </tr>
+          </thead>
+          <tbody id="detail-ingredient-body"></tbody>
+        </table>
+      </div>
+
+      <div class="detail-steps" id="detail-steps-section" style="display:none">
+        <h4 data-i18n="section.steps">作り方</h4>
+        <div id="detail-steps-body"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" onclick="deleteRecipe()" data-i18n="action.delete">削除</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost" onclick="editRecipe()" data-i18n="action.edit">編集</button>
+      <button class="btn btn-ghost" onclick="closeModal('detail-modal')" data-i18n="action.close">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SETTINGS MODAL ===== -->
+<div class="modal-overlay" id="settings-modal" onclick="handleOverlayClick(event,'settings-modal')">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h2 data-i18n="settings.title_full">⚙ 設定</h2>
+      <button class="modal-close" onclick="closeModal('settings-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label data-i18n="settings.ai_provider">使用するAI</label>
+        <select id="s-ai-provider" onchange="switchProviderSection()">
+          <option value="gemini">Google Gemini</option>
+          <option value="chatgpt">OpenAI ChatGPT</option>
+        </select>
+      </div>
+
+      <!-- Gemini -->
+      <div id="provider-gemini-section">
+        <div class="form-group" style="margin-top:16px">
+          <label data-i18n="settings.gemini_key">Gemini APIキー</label>
+          <div style="display:flex;gap:8px">
+            <input type="password" id="s-api-key" placeholder="AIzaSy...">
+            <button class="btn btn-ghost btn-sm" id="toggle-gemini-btn" onclick="toggleKeyVisibility('s-api-key','toggle-gemini-btn')" style="flex-shrink:0;white-space:nowrap" data-i18n="settings.show">表示</button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteProviderKey('gemini','s-api-key')" style="flex-shrink:0;white-space:nowrap;color:#e05252" data-i18n="settings.delete">削除</button>
+          </div>
+          <div class="api-key-warning">
+            <span data-i18n="settings.api_key_warning">⚠ APIキーはこのブラウザのローカルストレージのみに保存されます。外部サーバーには送信されません。</span><br>
+            <a href="https://www.google.com/search?q=Google+AI+Studio+API%E3%82%AD%E3%83%BC+%E5%8F%96%E5%BE%97" target="_blank" rel="noopener" data-i18n="settings.gemini_get_link">Google AI StudioでAPIキーを取得（検索） →</a>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:16px">
+          <label data-i18n="settings.gemini_model">Gemini モデル</label>
+          <input type="text" id="s-model" list="s-model-list" placeholder="gemini-2.5-flash">
+          <datalist id="s-model-list">
+            <option value="gemini-2.5-flash" data-i18n="settings.gemini_recommended">gemini-2.5-flash（推奨）</option>
+            <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+            <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+          </datalist>
+          <div class="form-hint" style="margin-top:4px" data-i18n="settings.model_hint">候補から選択するか、モデル名を直接入力できます</div>
+        </div>
+      </div>
+
+      <!-- ChatGPT -->
+      <div id="provider-chatgpt-section" style="display:none">
+        <div class="form-group" style="margin-top:16px">
+          <label data-i18n="settings.chatgpt_key">ChatGPT APIキー</label>
+          <div style="display:flex;gap:8px">
+            <input type="password" id="s-chatgpt-key" placeholder="sk-...">
+            <button class="btn btn-ghost btn-sm" id="toggle-chatgpt-btn" onclick="toggleKeyVisibility('s-chatgpt-key','toggle-chatgpt-btn')" style="flex-shrink:0;white-space:nowrap" data-i18n="settings.show">表示</button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteProviderKey('chatgpt','s-chatgpt-key')" style="flex-shrink:0;white-space:nowrap;color:#e05252" data-i18n="settings.delete">削除</button>
+          </div>
+          <div class="api-key-warning">
+            <span data-i18n="settings.api_key_warning">⚠ APIキーはこのブラウザのローカルストレージのみに保存されます。外部サーバーには送信されません。</span><br>
+            <a href="https://www.google.com/search?q=OpenAI+API%E3%82%AD%E3%83%BC+%E5%8F%96%E5%BE%97" target="_blank" rel="noopener" data-i18n="settings.chatgpt_get_link">OpenAI PlatformでAPIキーを取得（検索） →</a>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:16px">
+          <label data-i18n="settings.chatgpt_model">ChatGPT モデル</label>
+          <input type="text" id="s-chatgpt-model" list="s-chatgpt-model-list" placeholder="gpt-4o">
+          <datalist id="s-chatgpt-model-list">
+            <option value="gpt-4o" data-i18n="settings.chatgpt_recommended">gpt-4o（推奨）</option>
+            <option value="gpt-4o-mini">gpt-4o-mini</option>
+            <option value="gpt-4-turbo">gpt-4-turbo</option>
+          </datalist>
+          <div class="form-hint" style="margin-top:4px" data-i18n="settings.model_hint">候補から選択するか、モデル名を直接入力できます</div>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:16px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal">
+          <input type="checkbox" id="s-yt-autofetch" style="width:16px;height:16px;cursor:pointer">
+          <span data-i18n="settings.yt_autofetch">YouTubeのURLからタイトルを自動取得する</span>
+        </label>
+        <div class="form-hint" style="margin-top:4px" data-i18n="settings.yt_autofetch_hint">オフにすると YouTube oEmbed API への通信が発生しません</div>
+      </div>
+      <div class="form-group" style="margin-top:24px;margin-bottom:0">
+        <label style="display:flex;align-items:center;justify-content:space-between">
+          <span data-i18n="settings.token_usage">トークン使用量（累計）</span>
+          <button class="btn btn-ghost btn-sm" onclick="resetTokenUsage()" data-i18n="settings.reset">リセット</button>
+        </label>
+        <div id="token-usage-display" style="margin-top:8px"></div>
+        <div class="form-hint" style="margin-top:8px" data-i18n="settings.token_hint">Gemini無料枠の目安: 入力100万トークン/日、出力100万トークン/日（変更される場合があります）</div>
+      </div>
+      <div class="form-group" style="margin-top:24px;margin-bottom:0;padding-top:16px;border-top:1px solid var(--border)">
+        <label data-i18n="settings.privacy_title">外部サービスとの通信について</label>
+        <div class="form-hint" style="margin-top:8px;line-height:1.7" data-i18n="settings.privacy_body">
+          このアプリは以下の外部サービスにリクエストを送信することがあります。<br>
+          ・<strong>Google Gemini API</strong>：AIによるレシピ解析時（設定したAPIキーを使用）<br>
+          ・<strong>YouTube oEmbed API</strong>：YouTubeのURLを入力した際のタイトル自動取得時<br>
+          いずれもユーザーの操作時のみ通信が発生します。レシピデータはこのブラウザのローカルストレージにのみ保存され、外部サーバーへ送信されることはありません。
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('settings-modal')" data-i18n="action.cancel">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveSettings()" data-i18n="action.save">保存する</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><span id="toast-msg"></span><button id="toast-undo-btn" style="display:none" onclick="undoDelete()">元に戻す</button></div>
+
+<script>
+// ===== I18N =====
+// 翻訳辞書。日本語をベース、英語を併記。新しい文言を追加する時は両方に追加する
+const I18N = {
+  ja: {
+    'app.title': 'レシピ管理',
+    'document.title': 'レシピ管理アプリ',
+    'form.title': 'タイトル',
+    'form.title_autofilled': '自動取得',
+    'form.title_placeholder': '例：簡単チャーハン',
+    'action.translate_title': '現在の表示言語に翻訳',
+    'action.add_recipe': '＋ レシピを追加',
+    'action.export': 'エクスポート',
+    'action.export_tip': 'レシピをJSONファイルに書き出す',
+    'action.import': 'インポート',
+    'action.import_tip': 'JSONファイルからレシピを読み込む',
+    'settings.title': '設定',
+    'search.placeholder': 'タイトル・メモで検索...',
+    'filter.all_sources': 'すべてのソース',
+    'filter.website': 'Webサイト',
+    'filter.other': 'その他',
+    'stats.saved': '件保存済み',
+    'stats.search_result': '（検索結果: <strong>{n}</strong> 件）',
+    'empty.no_recipes': 'まだレシピがありません',
+    'empty.add_hint': '「レシピを追加」ボタンから登録してみましょう',
+    'empty.no_match': '一致するレシピがありません',
+    'empty.adjust_hint': '検索ワードやフィルターを変えてみてください',
+
+    // === Add/Edit Modal ===
+    'modal.add_title': 'レシピを追加',
+    'modal.edit_title': 'レシピを編集',
+    'form.url_hint': 'YouTubeまたはWebサイトのURLを入力',
+    'form.servings': '基準人数',
+    'form.source': 'ソース',
+    'form.source.youtube': 'YouTube',
+    'form.source.web': 'Webサイト',
+    'form.source.other': 'その他',
+    'form.memo': 'メモ',
+    'form.memo_placeholder': 'ポイント・感想・アレンジなど...',
+    'parse.toggle': '✨ 概要欄テキストを貼り付けてAIで自動解析',
+    'parse.yt_open': '▶ YouTubeで概要欄を開く',
+    'parse.yt_hint': '→ コピーして下に貼り付けてください',
+    'parse.placeholder': 'YouTubeの概要欄やレシピページのテキストをここに貼り付けてください。レシピ名・材料・作り方を自動で入力します。',
+    'parse.run': '✨ AIで解析する',
+    'section.ingredients': '材料',
+    'section.steps': '作り方',
+    'action.add_ingredient': '＋ 材料を追加',
+    'action.add_step': '＋ 手順を追加',
+    'ing.name': '材料名',
+    'ing.amount': '分量',
+    'ing.unit': '単位',
+    'ing.placeholder_name': '例：卵',
+    'ing.placeholder_unit': '個',
+    'action.remove': '削除',
+    'token.calls': '呼び出し回数',
+    'token.input': '入力トークン',
+    'token.output': '出力トークン',
+    'token.total': '合計トークン',
+    'action.cancel': 'キャンセル',
+    'action.save': '保存する',
+
+    // === Detail Modal ===
+    'detail.servings_label': '人数：',
+    'action.delete': '削除',
+    'action.edit': '編集',
+    'action.close': '閉じる',
+
+    // === Settings Modal ===
+    'settings.title_full': '⚙ 設定',
+    'settings.ai_provider': '使用するAI',
+    'settings.gemini_key': 'Gemini APIキー',
+    'settings.chatgpt_key': 'ChatGPT APIキー',
+    'settings.gemini_model': 'Gemini モデル',
+    'settings.chatgpt_model': 'ChatGPT モデル',
+    'settings.show': '表示',
+    'settings.hide': '隠す',
+    'settings.delete': '削除',
+    'settings.api_key_warning': '⚠ APIキーはこのブラウザのローカルストレージのみに保存されます。外部サーバーには送信されません。',
+    'settings.gemini_get_link': 'Google AI StudioでAPIキーを取得（検索） →',
+    'settings.chatgpt_get_link': 'OpenAI PlatformでAPIキーを取得（検索） →',
+    'settings.model_hint': '候補から選択するか、モデル名を直接入力できます',
+    'settings.gemini_recommended': 'gemini-2.5-flash（推奨）',
+    'settings.chatgpt_recommended': 'gpt-4o（推奨）',
+    'settings.yt_autofetch': 'YouTubeのURLからタイトルを自動取得する',
+    'settings.yt_autofetch_hint': 'オフにすると YouTube oEmbed API への通信が発生しません',
+    'settings.token_usage': 'トークン使用量（累計）',
+    'settings.token_hint': 'Gemini無料枠の目安: 入力100万トークン/日、出力100万トークン/日（変更される場合があります）',
+    'settings.reset': 'リセット',
+    'settings.privacy_title': '外部サービスとの通信について',
+    'settings.privacy_body': 'このアプリは以下の外部サービスにリクエストを送信することがあります。<br>・<strong>Google Gemini API</strong>：AIによるレシピ解析時（設定したAPIキーを使用）<br>・<strong>YouTube oEmbed API</strong>：YouTubeのURLを入力した際のタイトル自動取得時<br>いずれもユーザーの操作時のみ通信が発生します。レシピデータはこのブラウザのローカルストレージにのみ保存され、外部サーバーへ送信されることはありません。',
+  },
+  en: {
+    'app.title': 'Recipe Manager',
+    'document.title': 'Recipe Manager',
+    'form.title': 'Title',
+    'form.title_autofilled': 'auto-fetched',
+    'form.title_placeholder': 'e.g. Simple Fried Rice',
+    'action.translate_title': 'Translate to current UI language',
+    'action.add_recipe': '+ Add Recipe',
+    'action.export': 'Export',
+    'action.export_tip': 'Export recipes to a JSON file',
+    'action.import': 'Import',
+    'action.import_tip': 'Import recipes from a JSON file',
+    'settings.title': 'Settings',
+    'search.placeholder': 'Search by title or memo...',
+    'filter.all_sources': 'All sources',
+    'filter.website': 'Website',
+    'filter.other': 'Other',
+    'stats.saved': 'recipes saved',
+    'stats.search_result': '(search result: <strong>{n}</strong> items)',
+    'empty.no_recipes': 'No recipes yet',
+    'empty.add_hint': 'Click the "+ Add Recipe" button to get started',
+    'empty.no_match': 'No matching recipes',
+    'empty.adjust_hint': 'Try changing the search keyword or filter',
+
+    // === Add/Edit Modal ===
+    'modal.add_title': 'Add Recipe',
+    'modal.edit_title': 'Edit Recipe',
+    'form.url_hint': 'Enter a YouTube or website URL',
+    'form.servings': 'Servings',
+    'form.source': 'Source',
+    'form.source.youtube': 'YouTube',
+    'form.source.web': 'Website',
+    'form.source.other': 'Other',
+    'form.memo': 'Memo',
+    'form.memo_placeholder': 'Tips, thoughts, variations...',
+    'parse.toggle': '✨ Paste description text to auto-parse with AI',
+    'parse.yt_open': '▶ Open description on YouTube',
+    'parse.yt_hint': '→ Copy and paste it below',
+    'parse.placeholder': 'Paste the YouTube description or recipe page text here. The title, ingredients, and steps will be filled in automatically.',
+    'parse.run': '✨ Parse with AI',
+    'section.ingredients': 'Ingredients',
+    'section.steps': 'Steps',
+    'action.add_ingredient': '+ Add Ingredient',
+    'action.add_step': '+ Add Step',
+    'ing.name': 'Ingredient',
+    'ing.amount': 'Amount',
+    'ing.unit': 'Unit',
+    'ing.placeholder_name': 'e.g. Egg',
+    'ing.placeholder_unit': 'pcs',
+    'action.remove': 'Remove',
+    'token.calls': 'API calls',
+    'token.input': 'Input tokens',
+    'token.output': 'Output tokens',
+    'token.total': 'Total tokens',
+    'action.cancel': 'Cancel',
+    'action.save': 'Save',
+
+    // === Detail Modal ===
+    'detail.servings_label': 'Servings:',
+    'action.delete': 'Delete',
+    'action.edit': 'Edit',
+    'action.close': 'Close',
+
+    // === Settings Modal ===
+    'settings.title_full': '⚙ Settings',
+    'settings.ai_provider': 'AI Provider',
+    'settings.gemini_key': 'Gemini API Key',
+    'settings.chatgpt_key': 'ChatGPT API Key',
+    'settings.gemini_model': 'Gemini Model',
+    'settings.chatgpt_model': 'ChatGPT Model',
+    'settings.show': 'Show',
+    'settings.hide': 'Hide',
+    'settings.delete': 'Delete',
+    'settings.api_key_warning': '⚠ The API key is stored only in this browser\'s local storage. It is never sent to external servers.',
+    'settings.gemini_get_link': 'Get an API key from Google AI Studio (search) →',
+    'settings.chatgpt_get_link': 'Get an API key from OpenAI Platform (search) →',
+    'settings.model_hint': 'Select from suggestions or enter a model name directly',
+    'settings.gemini_recommended': 'gemini-2.5-flash (recommended)',
+    'settings.chatgpt_recommended': 'gpt-4o (recommended)',
+    'settings.yt_autofetch': 'Auto-fetch title from YouTube URLs',
+    'settings.yt_autofetch_hint': 'When disabled, no requests are sent to the YouTube oEmbed API',
+    'settings.token_usage': 'Token usage (cumulative)',
+    'settings.token_hint': 'Gemini free tier estimate: 1M input tokens/day, 1M output tokens/day (subject to change)',
+    'settings.reset': 'Reset',
+    'settings.privacy_title': 'About external service communication',
+    'settings.privacy_body': 'This app may send requests to the following external services:<br>・<strong>Google Gemini API</strong>: when AI parses a recipe (uses the configured API key)<br>・<strong>YouTube oEmbed API</strong>: when fetching titles from YouTube URLs<br>Both happen only when the user takes an action. Recipe data is stored only in this browser and never sent to any external server.',
+  }
+};
+
+const LANG_STORAGE = 'recipe_manager_lang';
+
+function loadLang() {
+  return localStorage.getItem(LANG_STORAGE) || 'ja';
+}
+
+function saveLang(lang) {
+  localStorage.setItem(LANG_STORAGE, lang);
+}
+
+// 翻訳ルックアップ。{key} のプレースホルダ展開もサポート
+function t(key, vars) {
+  const lang = loadLang();
+  const dict = I18N[lang] || I18N.ja;
+  let str = dict[key] !== undefined ? dict[key] : (I18N.ja[key] !== undefined ? I18N.ja[key] : key);
+  if (vars) {
+    for (const k in vars) {
+      str = str.replace(new RegExp('\\{' + k + '\\}', 'g'), vars[k]);
+    }
+  }
+  return str;
+}
+
+// DOM 内の data-i18n / data-i18n-placeholder / data-i18n-title を一括反映
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.innerHTML = t(key);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.title = t(el.getAttribute('data-i18n-title'));
+  });
+  // <html lang> も更新（アクセシビリティ・SEO）
+  document.documentElement.lang = loadLang();
+  // ブラウザタブのタイトルも更新
+  document.title = t('document.title');
+  // 言語ボタン表示更新
+  const btn = document.getElementById('lang-btn');
+  if (btn) btn.textContent = loadLang() === 'ja' ? 'EN' : 'JA';
+}
+
+function setLang(lang) {
+  if (!I18N[lang]) return;
+  saveLang(lang);
+  applyI18n();
+  // 動的レンダリング部分も再描画
+  if (typeof renderList === 'function') renderList();
+  if (typeof renderTokenUsage === 'function') renderTokenUsage();
+}
+
+function toggleLang() {
+  setLang(loadLang() === 'ja' ? 'en' : 'ja');
+}
+
+// ===== DATA LAYER (IndexedDB) =====
+// - レシピ本体は IndexedDB に保存（容量制限がほぼ無く、画像対応も可能）
+// - 既存 API（loadRecipes / saveRecipes）の同期インターフェースは維持し、
+//   メモリキャッシュ経由で同期返却。書き込みは fire-and-forget。
+// - 旧 LocalStorage 形式（recipe_manager_v1）からの自動移行を初回起動時に実行。
+
+const LEGACY_STORAGE_KEY = 'recipe_manager_v1';
+const MIGRATION_FLAG = 'recipe_manager_migrated_to_idb_v1';
+const IDB_NAME = 'recipe-manager';
+const IDB_VERSION = 1;
+const IDB_STORE = 'recipes';
+const IDB_KEY = 'recipes'; // 単一エントリとしてレシピ配列を保存
+
+let _idb = null;
+let _recipesCache = [];
+
+function openIdb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function idbGet(key) {
+  if (!_idb) _idb = await openIdb();
+  return new Promise((resolve, reject) => {
+    const tx = _idb.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbPut(key, value) {
+  if (!_idb) _idb = await openIdb();
+  return new Promise((resolve, reject) => {
+    const tx = _idb.transaction(IDB_STORE, 'readwrite');
+    const req = tx.objectStore(IDB_STORE).put(value, key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// 起動時に1回だけ呼ぶ。LocalStorage → IndexedDB の移行も実施。
+async function initRecipeStore() {
+  try {
+    let stored = await idbGet(IDB_KEY);
+
+    // 未移行 & 旧データがあれば移行
+    if (!stored && !localStorage.getItem(MIGRATION_FLAG)) {
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy) {
+        try {
+          const parsed = JSON.parse(legacy);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            await idbPut(IDB_KEY, parsed);
+            stored = parsed;
+            console.log(`[migration] ${parsed.length} 件のレシピを LocalStorage → IndexedDB に移行しました`);
+          }
+        } catch (e) {
+          console.warn('[migration] 旧データの解析に失敗', e);
+        }
+      }
+      localStorage.setItem(MIGRATION_FLAG, '1');
+      // 移行完了後も旧データはバックアップとして残しておく（次回バージョンで削除予定）
+    }
+
+    _recipesCache = Array.isArray(stored) ? stored : [];
+  } catch (e) {
+    console.error('[idb] 初期化エラー、LocalStorage にフォールバック', e);
+    // IndexedDB 不可な環境では旧 LocalStorage から読む（最低限動作する）
+    try {
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      _recipesCache = legacy ? (JSON.parse(legacy) || []) : [];
+    } catch {
+      _recipesCache = [];
+    }
+  }
+}
+
+function loadRecipes() {
+  // 同期 API：メモリキャッシュから返す
+  return _recipesCache;
+}
+
+function saveRecipes(recipes) {
+  // メモリは即更新（既存の同期コードが続けて使える）
+  _recipesCache = recipes;
+  // IDB へは非同期で書き込み（fire-and-forget、エラーは toast / alert で通知）
+  idbPut(IDB_KEY, recipes).catch((e) => {
+    console.error('[idb] 保存エラー', e);
+    alert('保存に失敗しました: ' + (e && e.message ? e.message : e));
+  });
+}
+
+// ===== BACKUP BANNER =====
+const BACKUP_INTERVAL_DAYS = 30;
+
+function checkBackupBanner() {
+  const banner = document.getElementById('backup-banner');
+  if (loadRecipes().length === 0) { banner.classList.remove('show'); return; }
+
+  // 今日すでに「後で」を押していたら表示しない
+  const dismissed = sessionStorage.getItem(BACKUP_DISMISS_STORAGE);
+  if (dismissed === new Date().toDateString()) { banner.classList.remove('show'); return; }
+
+  const lastExport = localStorage.getItem(LAST_EXPORT_STORAGE);
+  const msg = document.getElementById('backup-banner-msg');
+
+  if (!lastExport) {
+    msg.textContent = '⚠ まだバックアップが作成されていません。ツールバーの「エクスポート」からレシピデータを保存しておくことをお勧めします。';
+    banner.classList.add('show');
+    return;
+  }
+
+  const daysSince = Math.floor((Date.now() - Number(lastExport)) / (1000 * 60 * 60 * 24));
+  if (daysSince >= BACKUP_INTERVAL_DAYS) {
+    msg.textContent = `最後のエクスポートから ${daysSince} 日が経過しています。ツールバーの「エクスポート」から定期的にバックアップしてください。`;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function dismissBackupBanner() {
+  sessionStorage.setItem(BACKUP_DISMISS_STORAGE, new Date().toDateString());
+  document.getElementById('backup-banner').classList.remove('show');
+}
+
+function exportRecipes() {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    recipes: loadRecipes()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `recipes_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  localStorage.setItem(LAST_EXPORT_STORAGE, Date.now());
+  document.getElementById('backup-banner').classList.remove('show');
+  showToast(`${data.recipes.length} 件のレシピをエクスポートしました`);
+}
+
+function importRecipes(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      const imported = Array.isArray(parsed) ? parsed : (parsed.recipes || []);
+      if (!Array.isArray(imported) || imported.length === 0) throw new Error('レシピデータが見つかりません');
+      const current = loadRecipes();
+      const existingIds = new Set(current.map(r => r.id));
+      const toAdd = imported
+        .filter(r => r.id && /^[a-z0-9]+$/i.test(r.id) && r.title && !existingIds.has(r.id))
+        .map(r => ({
+          ...r,
+          source: ['youtube', 'web', 'other'].includes(r.source) ? r.source : 'other',
+          baseServings: (Number(r.baseServings) >= 1 ? Number(r.baseServings) : 2),
+          ingredients: Array.isArray(r.ingredients)
+            ? r.ingredients
+                .filter(ing => ing && typeof ing.name === 'string' && ing.name.trim())
+                .map(ing => ({
+                  ...ing,
+                  amount: (typeof ing.amount === 'number' && isFinite(ing.amount)) ? ing.amount : null
+                }))
+            : [],
+          steps: Array.isArray(r.steps)
+            ? r.steps.filter(s => typeof s === 'string')
+            : []
+        }));
+      if (toAdd.length === 0) {
+        showToast('追加できる新しいレシピがありませんでした（重複またはデータ不正）');
+        return;
+      }
+      saveRecipes([...current, ...toAdd]);
+      recipes = loadRecipes();
+      renderList();
+      showToast(`${toAdd.length} 件のレシピをインポートしました`);
+    } catch (err) {
+      alert('インポート失敗: ' + err.message);
+    } finally {
+      input.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+// ===== STATE =====
+let recipes = []; // initRecipeStore 完了後に loadRecipes() で代入
+let editingId = null;
+let detailId = null;
+
+// ===== SOURCE HELPERS =====
+function detectSource(url) {
+  if (!url) return 'other';
+  if (/youtube\.com|youtu\.be/i.test(url)) return 'youtube';
+  return 'web';
+}
+
+function sourceLabel(s) {
+  return { youtube: 'YouTube', web: 'Webサイト', other: 'その他' }[s] || s;
+}
+
+function sourceBadgeClass(s) {
+  return { youtube: 'source-youtube', web: 'source-web', other: 'source-other' }[s] || 'source-other';
+}
+
+// ===== RENDER LIST =====
+function renderList() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const filterSource = document.getElementById('filter-source').value;
+
+  const filtered = recipes.filter(r => {
+    const matchText = !q || r.title.toLowerCase().includes(q) || (r.memo || '').toLowerCase().includes(q);
+    const matchSource = !filterSource || r.source === filterSource;
+    return matchText && matchSource;
+  });
+
+  const statsBar = document.getElementById('stats-bar');
+  statsBar.innerHTML = `<strong>${recipes.length}</strong> ${t('stats.saved')}` +
+    (filtered.length !== recipes.length ? ` <span>${t('stats.search_result', { n: filtered.length })}</span>` : '');
+
+  const list = document.getElementById('recipe-list');
+  if (filtered.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">${recipes.length === 0 ? '🍳' : '🔍'}</div>
+        <h3>${recipes.length === 0 ? t('empty.no_recipes') : t('empty.no_match')}</h3>
+        <p>${recipes.length === 0 ? t('empty.add_hint') : t('empty.adjust_hint')}</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = `<div class="recipe-grid">${filtered.map(r => cardHTML(r)).join('')}</div>`;
+}
+
+function cardHTML(r) {
+  const ingCount = (r.ingredients || []).length;
+  const date = new Date(r.createdAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+  return `
+    <div class="recipe-card" onclick="openDetail('${r.id}')">
+      <div class="card-thumb"></div>
+      <div class="card-body">
+        <span class="card-source ${sourceBadgeClass(r.source)}">${sourceLabel(r.source)}</span>
+        <div class="card-title">${escHtml(r.title)}</div>
+        <div class="card-memo">${r.memo ? escHtml(r.memo) : '<span style="color:var(--border)">メモなし</span>'}</div>
+        <div class="card-footer">
+          <div class="card-tags">
+            ${ingCount > 0 ? `<span class="tag">材料 ${ingCount}品</span>` : ''}
+            <span class="tag">${r.baseServings}人前</span>
+          </div>
+          <span>${date}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ===== INGREDIENT ROWS (in form) =====
+function addIngredientRow(name = '', amount = '', unit = '') {
+  const row = document.createElement('div');
+  row.className = 'ingredient-row';
+  row.innerHTML = `
+    <input type="text" placeholder="${escHtml(t('ing.placeholder_name'))}" value="${escHtml(name)}">
+    <input type="number" placeholder="2" min="0" step="any" value="${escHtml(String(amount))}">
+    <input type="text" placeholder="${escHtml(t('ing.placeholder_unit'))}" value="${escHtml(unit)}">
+    <button class="remove-ing" onclick="this.parentElement.remove()" title="${escHtml(t('action.remove'))}">×</button>`;
+  document.getElementById('ingredient-rows').appendChild(row);
+}
+
+function getIngredients() {
+  const rows = document.querySelectorAll('#ingredient-rows .ingredient-row');
+  const result = [];
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const name = inputs[0].value.trim();
+    const amount = parseFloat(inputs[1].value);
+    const unit = inputs[2].value.trim();
+    if (name) result.push({ name, amount: isNaN(amount) ? null : amount, unit });
+  });
+  return result;
+}
+
+// ===== ADD/EDIT MODAL =====
+function openAddModal() {
+  editingId = null;
+  titleWasAutoFilled = false;
+  clearFieldErrors();
+  document.getElementById('modal-title').textContent = t('modal.add_title');
+  document.getElementById('f-title').value = '';
+  document.getElementById('f-url').value = '';
+  document.getElementById('f-memo').value = '';
+  document.getElementById('f-servings').value = '2';
+  document.getElementById('f-source').value = 'youtube';
+  document.getElementById('ingredient-rows').innerHTML = '';
+  document.getElementById('step-rows').innerHTML = '';
+  document.getElementById('title-autofill-badge').style.display = 'none';
+  clearUrlStatus();
+  updateYtDescHint('');
+  resetParseSection();
+  addIngredientRow();
+  openModal('add-modal');
+}
+
+function editRecipe() {
+  const r = recipes.find(x => x.id === detailId);
+  if (!r) return;
+  editingId = r.id;
+  closeModal('detail-modal');
+
+  document.getElementById('modal-title').textContent = t('modal.edit_title');
+  document.getElementById('f-title').value = r.title;
+  document.getElementById('f-url').value = r.url;
+  document.getElementById('f-memo').value = r.memo || '';
+  document.getElementById('f-servings').value = r.baseServings;
+  document.getElementById('f-source').value = r.source || detectSource(r.url);
+  document.getElementById('ingredient-rows').innerHTML = '';
+  titleWasAutoFilled = false;
+  document.getElementById('title-autofill-badge').style.display = 'none';
+  document.getElementById('step-rows').innerHTML = '';
+  clearUrlStatus();
+  updateYtDescHint(r.url);
+  resetParseSection();
+  (r.ingredients || []).forEach(ing => addIngredientRow(ing.name, ing.amount, ing.unit));
+  if (!(r.ingredients || []).length) addIngredientRow();
+  (r.steps || []).forEach(s => addStepRow(s));
+  openModal('add-modal');
+}
+
+function clearFieldErrors() {
+  ['error-title', 'error-url'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.classList.remove('show'); }
+  });
+  ['f-title', 'f-url'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('input-error');
+  });
+}
+
+function setFieldError(inputId, errorId, msg) {
+  const inp = document.getElementById(inputId);
+  const err = document.getElementById(errorId);
+  if (inp) inp.classList.add('input-error');
+  if (err) { err.textContent = msg; err.classList.add('show'); }
+}
+
+function saveRecipe() {
+  clearFieldErrors();
+  const title = document.getElementById('f-title').value.trim();
+  const url   = document.getElementById('f-url').value.trim();
+
+  let hasError = false;
+  if (!title) { setFieldError('f-title', 'error-title', 'タイトルを入力してください'); hasError = true; }
+  if (!url) {
+    setFieldError('f-url', 'error-url', 'URLを入力してください'); hasError = true;
+  } else if (safeUrl(url) === '#') {
+    setFieldError('f-url', 'error-url', 'http:// または https:// から始まる正しいURLを入力してください'); hasError = true;
+  }
+  if (hasError) return;
+
+  const ingredients = getIngredients();
+  const steps = getSteps();
+  const baseServings = parseInt(document.getElementById('f-servings').value) || 2;
+  const source = document.getElementById('f-source').value;
+  const memo = document.getElementById('f-memo').value.trim();
+
+  if (editingId) {
+    const idx = recipes.findIndex(r => r.id === editingId);
+    if (idx !== -1) {
+      recipes[idx] = { ...recipes[idx], title, url, memo, baseServings, source, ingredients, steps };
+    }
+    showToast('レシピを更新しました');
+  } else {
+    recipes.unshift({
+      id: generateId(),
+      title, url, memo, baseServings, source, ingredients, steps,
+      createdAt: Date.now()
+    });
+    showToast('レシピを追加しました');
+  }
+
+  saveRecipes(recipes);
+  closeModal('add-modal');
+  renderList();
+}
+
+// ===== DETAIL MODAL =====
+function openDetail(id) {
+  const r = recipes.find(x => x.id === id);
+  if (!r) return;
+  detailId = id;
+
+  document.getElementById('detail-title').textContent = r.title;
+  document.getElementById('detail-source-badge').className = `card-source ${sourceBadgeClass(r.source)}`;
+  document.getElementById('detail-source-badge').textContent = sourceLabel(r.source);
+
+  const urlEl = document.getElementById('detail-url');
+  urlEl.href = safeUrl(r.url);
+  document.getElementById('detail-url-text').textContent = r.url;
+
+  const memoWrap = document.getElementById('detail-memo-wrap');
+  if (r.memo) {
+    memoWrap.style.display = 'block';
+    memoWrap.textContent = r.memo;
+  } else {
+    memoWrap.style.display = 'none';
+  }
+
+  document.getElementById('detail-servings').value = r.baseServings;
+  document.getElementById('serving-note').textContent = `基準: ${r.baseServings}人前`;
+
+  const ingSection = document.getElementById('detail-ingredients-section');
+  ingSection.style.display = (r.ingredients && r.ingredients.length) ? 'block' : 'none';
+
+  // 作り方
+  const stepsSection = document.getElementById('detail-steps-section');
+  const stepsBody = document.getElementById('detail-steps-body');
+  if (r.steps && r.steps.length > 0) {
+    stepsSection.style.display = 'block';
+    stepsBody.innerHTML = r.steps.map((s, i) => `
+      <div class="step-item">
+        <div class="step-item-num">${i + 1}</div>
+        <div class="step-item-text">${escHtml(s)}</div>
+      </div>`).join('');
+  } else {
+    stepsSection.style.display = 'none';
+  }
+
+  renderIngredients();
+  openModal('detail-modal');
+}
+
+function renderIngredients() {
+  const r = recipes.find(x => x.id === detailId);
+  if (!r) return;
+
+  const currentServings = parseInt(document.getElementById('detail-servings').value) || r.baseServings;
+  const ratio = currentServings / r.baseServings;
+  const tbody = document.getElementById('detail-ingredient-body');
+
+  if (!r.ingredients || r.ingredients.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3" class="no-ingredients">材料が登録されていません</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = r.ingredients.map(ing => {
+    let amountDisplay = '';
+    if (ing.amount !== null && ing.amount !== undefined && !isNaN(ing.amount)) {
+      const raw = ing.amount * ratio;
+      // 小数は最大2桁、きれいな数字に
+      amountDisplay = parseFloat(raw.toFixed(2)).toString();
+    }
+    return `
+      <tr>
+        <td>${escHtml(ing.name)}</td>
+        <td class="amount">${amountDisplay}</td>
+        <td class="unit">${escHtml(ing.unit || '')}</td>
+      </tr>`;
+  }).join('');
+}
+
+function changeServing(delta) {
+  const input = document.getElementById('detail-servings');
+  const val = Math.max(1, (parseInt(input.value) || 1) + delta);
+  input.value = val;
+  renderIngredients();
+}
+
+function deleteRecipe() {
+  if (!detailId) return;
+  const r = recipes.find(x => x.id === detailId);
+  if (!r) return;
+  const index = recipes.indexOf(r);
+  deletedSnapshot = { recipe: r, index };
+  recipes = recipes.filter(x => x.id !== detailId);
+  saveRecipes(recipes);
+  closeModal('detail-modal');
+  renderList();
+  showToastWithUndo(`「${escHtml(r.title)}」を削除しました`);
+}
+
+// ===== MODAL HELPERS =====
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+function handleOverlayClick(e, id) {
+  if (e.target === document.getElementById(id)) closeModal(id);
+}
+
+// ===== TOAST =====
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast-undo-btn').style.display = 'none';
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+let deletedSnapshot = null;
+let undoTimer = null;
+
+function showToastWithUndo(msg) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast-undo-btn').style.display = 'inline-block';
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => {
+    el.classList.remove('show');
+    deletedSnapshot = null;
+  }, 5000);
+}
+
+function undoDelete() {
+  if (!deletedSnapshot) return;
+  clearTimeout(undoTimer);
+  recipes.splice(deletedSnapshot.index, 0, deletedSnapshot.recipe);
+  saveRecipes(recipes);
+  renderList();
+  deletedSnapshot = null;
+  showToast('削除を取り消しました');
+}
+
+// ===== UTIL =====
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function safeUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return ['http:', 'https:'].includes(parsed.protocol) ? url : '#';
+  } catch {
+    return '#';
+  }
+}
+
+// ===== TOKEN USAGE =====
+const TOKEN_STORAGE = 'recipe_manager_token_usage';
+
+function loadTokenUsage() {
+  try { return JSON.parse(localStorage.getItem(TOKEN_STORAGE)) || { calls: 0, input: 0, output: 0 }; }
+  catch { return { calls: 0, input: 0, output: 0 }; }
+}
+
+function addTokenUsage(inputTokens, outputTokens) {
+  const u = loadTokenUsage();
+  u.calls += 1;
+  u.input += inputTokens || 0;
+  u.output += outputTokens || 0;
+  localStorage.setItem(TOKEN_STORAGE, JSON.stringify(u));
+  return u;
+}
+
+function resetTokenUsage() {
+  localStorage.removeItem(TOKEN_STORAGE);
+  renderTokenUsage();
+  showToast('使用量をリセットしました');
+}
+
+function renderTokenUsage() {
+  const el = document.getElementById('token-usage-display');
+  if (!el) return;
+  const u = loadTokenUsage();
+  if (u.calls === 0) {
+    el.innerHTML = '<span style="color:var(--text-muted)">まだ使用履歴がありません</span>';
+    return;
+  }
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="token-stat"><div class="token-val">${u.calls.toLocaleString()}</div><div class="token-label">${escHtml(t('token.calls'))}</div></div>
+      <div class="token-stat"><div class="token-val">${u.input.toLocaleString()}</div><div class="token-label">${escHtml(t('token.input'))}</div></div>
+      <div class="token-stat"><div class="token-val">${u.output.toLocaleString()}</div><div class="token-label">${escHtml(t('token.output'))}</div></div>
+      <div class="token-stat"><div class="token-val">${(u.input + u.output).toLocaleString()}</div><div class="token-label">${escHtml(t('token.total'))}</div></div>
+    </div>`;
+}
+
+// ===== SETTINGS =====
+const AI_PROVIDER_STORAGE   = 'recipe_manager_ai_provider';
+const API_KEY_STORAGE       = 'recipe_manager_gemini_key';
+const MODEL_STORAGE         = 'recipe_manager_gemini_model';
+const CHATGPT_KEY_STORAGE   = 'recipe_manager_chatgpt_key';
+const CHATGPT_MODEL_STORAGE = 'recipe_manager_chatgpt_model';
+const YT_AUTOFETCH_STORAGE    = 'recipe_manager_yt_autofetch';
+const LAST_EXPORT_STORAGE     = 'recipe_manager_last_export';
+const BACKUP_DISMISS_STORAGE  = 'recipe_manager_backup_dismissed';
+
+function loadYtAutoFetch() {
+  const v = localStorage.getItem(YT_AUTOFETCH_STORAGE);
+  return v === null ? true : v === 'true';
+}
+
+function loadAiProvider()   { return localStorage.getItem(AI_PROVIDER_STORAGE)  || 'gemini'; }
+function loadApiKey()       { return localStorage.getItem(API_KEY_STORAGE)       || ''; }
+function loadModel()        { return localStorage.getItem(MODEL_STORAGE)          || 'gemini-2.5-flash'; }
+function loadChatGptKey()   { return localStorage.getItem(CHATGPT_KEY_STORAGE)   || ''; }
+function loadChatGptModel() { return localStorage.getItem(CHATGPT_MODEL_STORAGE) || 'gpt-4o'; }
+
+function openSettingsModal() {
+  // プロバイダー
+  document.getElementById('s-ai-provider').value = loadAiProvider();
+  // Gemini
+  document.getElementById('s-api-key').type = 'password';
+  document.getElementById('s-api-key').value = loadApiKey();
+  document.getElementById('toggle-gemini-btn').textContent = t('settings.show');
+  document.getElementById('s-model').value = loadModel();
+  // ChatGPT
+  document.getElementById('s-chatgpt-key').type = 'password';
+  document.getElementById('s-chatgpt-key').value = loadChatGptKey();
+  document.getElementById('toggle-chatgpt-btn').textContent = t('settings.show');
+  document.getElementById('s-chatgpt-model').value = loadChatGptModel();
+  // その他
+  switchProviderSection();
+  document.getElementById('s-yt-autofetch').checked = loadYtAutoFetch();
+  renderTokenUsage();
+  openModal('settings-modal');
+}
+
+function saveSettings() {
+  localStorage.setItem(AI_PROVIDER_STORAGE, document.getElementById('s-ai-provider').value);
+  // Gemini
+  const geminiKey = document.getElementById('s-api-key').value.trim();
+  if (geminiKey) localStorage.setItem(API_KEY_STORAGE, geminiKey);
+  else localStorage.removeItem(API_KEY_STORAGE);
+  localStorage.setItem(MODEL_STORAGE, document.getElementById('s-model').value.trim() || 'gemini-2.5-flash');
+  // ChatGPT
+  const chatgptKey = document.getElementById('s-chatgpt-key').value.trim();
+  if (chatgptKey) localStorage.setItem(CHATGPT_KEY_STORAGE, chatgptKey);
+  else localStorage.removeItem(CHATGPT_KEY_STORAGE);
+  localStorage.setItem(CHATGPT_MODEL_STORAGE, document.getElementById('s-chatgpt-model').value.trim() || 'gpt-4o');
+  // その他
+  localStorage.setItem(YT_AUTOFETCH_STORAGE, document.getElementById('s-yt-autofetch').checked);
+  showToast('設定を保存しました');
+  closeModal('settings-modal');
+}
+
+function switchProviderSection() {
+  const provider = document.getElementById('s-ai-provider').value;
+  ['gemini', 'chatgpt'].forEach(p => {
+    document.getElementById(`provider-${p}-section`).style.display = p === provider ? 'block' : 'none';
+  });
+}
+
+function toggleKeyVisibility(inputId, btnId) {
+  const inp = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = t('settings.hide'); }
+  else { inp.type = 'password'; btn.textContent = t('settings.show'); }
+}
+
+function deleteProviderKey(provider, inputId) {
+  const storageMap = { gemini: API_KEY_STORAGE, chatgpt: CHATGPT_KEY_STORAGE };
+  const storageKey = storageMap[provider];
+  if (!localStorage.getItem(storageKey)) { showToast('APIキーは登録されていません'); return; }
+  localStorage.removeItem(storageKey);
+  const inp = document.getElementById(inputId);
+  inp.value = '';
+  inp.type = 'password';
+  showToast('APIキーを削除しました');
+}
+
+// ===== PARSE SECTION TOGGLE =====
+let parseSectionOpen = false;
+
+function toggleParseSection() {
+  parseSectionOpen = !parseSectionOpen;
+  document.getElementById('parse-body').style.display = parseSectionOpen ? 'block' : 'none';
+  const icon = document.getElementById('parse-toggle-icon');
+  icon.classList.toggle('open', parseSectionOpen);
+}
+
+function resetParseSection() {
+  parseSectionOpen = false;
+  document.getElementById('parse-body').style.display = 'none';
+  document.getElementById('parse-toggle-icon').classList.remove('open');
+  document.getElementById('f-paste-text').value = '';
+  setParseStatus('', '');
+}
+
+function setParseStatus(type, msg) {
+  const el = document.getElementById('parse-status');
+  el.className = 'parse-status' + (type ? ' ' + type : '');
+  el.innerHTML = type === 'loading'
+    ? `<div class="spinner"></div>${msg}`
+    : msg;
+}
+
+// ===== STEPS FORM =====
+function addStepRow(text = '') {
+  const rows = document.getElementById('step-rows');
+  const num = rows.querySelectorAll('.step-row').length + 1;
+  const row = document.createElement('div');
+  row.className = 'step-row';
+  row.innerHTML = `
+    <div class="step-num">${num}</div>
+    <textarea placeholder="手順 ${num} の説明を入力...">${escHtml(text)}</textarea>
+    <button class="remove-step" onclick="this.parentElement.remove();renumberSteps()" title="削除">×</button>`;
+  rows.appendChild(row);
+}
+
+function renumberSteps() {
+  document.querySelectorAll('#step-rows .step-row').forEach((row, i) => {
+    row.querySelector('.step-num').textContent = i + 1;
+  });
+}
+
+function getSteps() {
+  return Array.from(document.querySelectorAll('#step-rows .step-row textarea'))
+    .map(t => t.value.trim())
+    .filter(Boolean);
+}
+
+// ===== AI PARSE (Gemini / OpenAI Structured Output) =====
+// Gemini 用 JSON Schema（OpenAPI 3.0 サブセット）
+const GEMINI_RECIPE_SCHEMA = {
+  type: 'object',
+  properties: {
+    title:    { type: 'string', description: 'レシピ名。見つからなければ空文字' },
+    servings: { type: 'integer', nullable: true, description: '人数（2人分→2）。なければ null' },
+    ingredients: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name:   { type: 'string' },
+          amount: { type: 'number', nullable: true, description: '数値のみ。「適量」等はnull' },
+          unit:   { type: 'string', description: '単位（個・g・ml等）。なければ空文字' }
+        },
+        required: ['name', 'amount', 'unit'],
+        propertyOrdering: ['name', 'amount', 'unit']
+      }
+    },
+    steps: { type: 'array', items: { type: 'string' } }
+  },
+  required: ['title', 'servings', 'ingredients', 'steps'],
+  propertyOrdering: ['title', 'servings', 'ingredients', 'steps']
+};
+
+// OpenAI 用 JSON Schema（strict モード）。Gemini と微妙に違う：
+// - nullable: true ではなく type: [..., 'null']
+// - additionalProperties: false が必須
+// - すべてのプロパティを required に入れる
+const OPENAI_RECIPE_SCHEMA = {
+  type: 'object',
+  properties: {
+    title:    { type: 'string' },
+    servings: { type: ['integer', 'null'] },
+    ingredients: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name:   { type: 'string' },
+          amount: { type: ['number', 'null'] },
+          unit:   { type: 'string' }
+        },
+        required: ['name', 'amount', 'unit'],
+        additionalProperties: false
+      }
+    },
+    steps: { type: 'array', items: { type: 'string' } }
+  },
+  required: ['title', 'servings', 'ingredients', 'steps'],
+  additionalProperties: false
+};
+
+function buildRecipePrompt(text, existingTitle) {
+  // 形式は responseSchema で強制されるので、抽出ルールだけ伝える
+  // UI 言語に合わせて出力言語を切替（ja: 日本語、en: 英語）
+  const lang = loadLang();
+  const trimmedTitle = (existingTitle || '').trim();
+
+  if (lang === 'en') {
+    const titleSection = trimmedTitle
+      ? `\nExisting title (already filled by user or auto-fetched): "${trimmedTitle}"\n→ If a clear recipe name appears in the text, use that. Otherwise, translate this existing title to English.\n`
+      : '';
+    return `Extract recipe information from the following text.${titleSection}
+
+Text:
+"""
+${text}
+"""
+
+Extraction rules:
+- title: recipe name. If existing title is provided above, prefer using/translating it unless the text contains a clearer name. Empty string if absolutely nothing.
+- servings: integer only (e.g. "serves 2" → 2, "4人分" → 4). null if not found.
+- ingredients[].name: ingredient name in English.
+- ingredients[].amount: pure number only. Use null for vague amounts like "to taste", "a little", "適量".
+- ingredients[].unit: unit (e.g. "g", "ml", "tbsp", "tsp", "piece"). Empty string if none.
+- steps: cooking steps in order, in English.
+
+IMPORTANT: Output ALL strings (title, ingredient names, units, steps) in English. Translate from the source language if needed.`;
+  }
+  // ja (default)
+  const titleSection = trimmedTitle
+    ? `\n既存タイトル（ユーザー入力 or 自動取得済み）: "${trimmedTitle}"\n→ テキスト内に明確なレシピ名があればそれを優先。なければこの既存タイトルを日本語に翻訳して使う。\n`
+    : '';
+  return `以下のテキストからレシピ情報を抽出してください。${titleSection}
+
+テキスト:
+"""
+${text}
+"""
+
+抽出ルール:
+- title: レシピ名。既存タイトルが提供されている場合、テキストに明確な名前がなければそれを翻訳して使う。何もなければ空文字。
+- servings: 「2人分」「4人前」などから整数のみ抽出。見つからなければ null
+- ingredients[].name: 材料名を日本語で
+- ingredients[].amount: 純粋な数値のみ。「適量」「少々」「お好みで」は null
+- ingredients[].unit: 単位（個・g・ml・大さじ等）。なければ空文字
+- steps: 作り方を順番通りの配列で、日本語で。なければ空配列
+
+重要: title・ingredients[].name・ingredients[].unit・steps はすべて日本語で出力してください。元テキストが他言語でも翻訳すること。`;
+}
+
+async function handleParseSuccess(data, inputTokens, outputTokens) {
+  const cumulative = addTokenUsage(inputTokens, outputTokens);
+  renderTokenUsage();
+  let parsed;
+  try {
+    const jsonStr = data.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+    parsed = JSON.parse(jsonStr);
+  } catch {
+    throw new Error('AIのレスポンスをJSONとして解析できませんでした');
+  }
+  await populateFromParsed(parsed);
+  const tokenInfo = inputTokens ? `　<span style="color:var(--text-muted);font-size:12px">今回 ${(inputTokens+outputTokens).toLocaleString()} トークン / 累計 ${(cumulative.input+cumulative.output).toLocaleString()}</span>` : '';
+  setParseStatus('success', `✓ 解析完了（材料 ${(parsed.ingredients||[]).length}品・手順 ${(parsed.steps||[]).length}工程）${tokenInfo}`);
+  return parsed;
+}
+
+async function runParseWithAI() {
+  const provider = loadAiProvider();
+  if (provider === 'chatgpt') return runParseWithChatGpt();
+  return runParseWithGemini();
+}
+
+async function runParseWithChatGpt() {
+  const apiKey = loadChatGptKey();
+  if (!apiKey) {
+    setParseStatus('error', '⚠ ChatGPT APIキーが設定されていません &nbsp;<button onclick="openSettingsModal()" style="padding:3px 8px;border:1px solid currentColor;border-radius:4px;background:none;cursor:pointer;font-size:12px;color:inherit">設定を開く</button>');
+    return;
+  }
+  const text = document.getElementById('f-paste-text').value.trim();
+  if (!text) { setParseStatus('error', '⚠ テキストを貼り付けてください'); return; }
+
+  const btn = document.getElementById('parse-btn');
+  btn.disabled = true;
+  setParseStatus('loading', '解析中...');
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: loadChatGptModel(),
+        messages: [{ role: 'user', content: buildRecipePrompt(text, document.getElementById('f-title').value) }],
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'recipe',
+            strict: true,
+            schema: OPENAI_RECIPE_SCHEMA
+          }
+        }
+      })
+    });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err?.error?.message || `HTTP ${res.status}`); }
+    const data = await res.json();
+    const raw = data.choices?.[0]?.message?.content || '';
+    await handleParseSuccess(raw, data.usage?.prompt_tokens || 0, data.usage?.completion_tokens || 0);
+  } catch (e) {
+    setParseStatus('error', `⚠ 解析失敗: ${escHtml(e.message)}`);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function runParseWithGemini() {
+  const apiKey = loadApiKey();
+  if (!apiKey) {
+    setParseStatus('error', '⚠ Gemini APIキーが設定されていません &nbsp;<button onclick="openSettingsModal()" style="padding:3px 8px;border:1px solid currentColor;border-radius:4px;background:none;cursor:pointer;font-size:12px;color:inherit">設定を開く</button>');
+    return;
+  }
+  const text = document.getElementById('f-paste-text').value.trim();
+  if (!text) { setParseStatus('error', '⚠ テキストを貼り付けてください'); return; }
+
+  const btn = document.getElementById('parse-btn');
+  btn.disabled = true;
+  setParseStatus('loading', '解析中...');
+  try {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${loadModel()}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: buildRecipePrompt(text, document.getElementById('f-title').value) }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: GEMINI_RECIPE_SCHEMA
+        }
+      })
+    });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err?.error?.message || `HTTP ${res.status}`); }
+    const data = await res.json();
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    await handleParseSuccess(raw, data.usageMetadata?.promptTokenCount || 0, data.usageMetadata?.candidatesTokenCount || 0);
+  } catch (e) {
+    setParseStatus('error', `⚠ 解析失敗: ${escHtml(e.message)}`);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ===== AI 翻訳ヘルパー（タイトル等の単発翻訳用） =====
+const _translateCache = new Map();
+
+// 簡易言語検出: 日本語文字を含めば ja、英字主体なら en
+function detectsJapanese(text) {
+  return /[぀-ゟ゠-ヿ一-龯]/.test(text || '');
+}
+function needsTranslation(text, targetLang) {
+  if (!text || !text.trim()) return false;
+  const isJa = detectsJapanese(text);
+  if (targetLang === 'en' && isJa) return true;
+  if (targetLang === 'ja' && !isJa && /[a-zA-Z]/.test(text)) return true;
+  return false;
+}
+
+async function aiTranslate(text, targetLang) {
+  if (!text || !text.trim()) return text;
+  const cacheKey = targetLang + ':' + text;
+  if (_translateCache.has(cacheKey)) return _translateCache.get(cacheKey);
+
+  const provider = loadAiProvider();
+  try {
+    let translated;
+    if (provider === 'chatgpt') {
+      translated = await _translateWithChatGpt(text, targetLang);
+    } else {
+      translated = await _translateWithGemini(text, targetLang);
+    }
+    if (translated) {
+      _translateCache.set(cacheKey, translated);
+      return translated;
+    }
+  } catch (e) {
+    console.warn('Translation failed:', e);
+  }
+  return text; // 失敗時は原文返却
+}
+
+async function _translateWithGemini(text, targetLang) {
+  const apiKey = loadApiKey();
+  if (!apiKey) return null;
+  const targetName = targetLang === 'ja' ? '日本語' : 'English';
+  const prompt = `Translate the following text to ${targetName}. Output ONLY the translation as plain text. No quotes, no explanation, no markdown.\n\n${text}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${loadModel()}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (data.usageMetadata) {
+    addTokenUsage(data.usageMetadata.promptTokenCount || 0, data.usageMetadata.candidatesTokenCount || 0);
+    renderTokenUsage();
+  }
+  return (data.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+}
+
+async function _translateWithChatGpt(text, targetLang) {
+  const apiKey = loadChatGptKey();
+  if (!apiKey) return null;
+  const targetName = targetLang === 'ja' ? 'Japanese' : 'English';
+  const prompt = `Translate the following text to ${targetName}. Output ONLY the translation as plain text. No quotes, no explanation, no markdown.\n\n${text}`;
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: loadChatGptModel(),
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (data.usage) {
+    addTokenUsage(data.usage.prompt_tokens || 0, data.usage.completion_tokens || 0);
+    renderTokenUsage();
+  }
+  return (data.choices?.[0]?.message?.content || '').trim();
+}
+
+// タイトル欄が UI 言語と違っていたら翻訳して書き戻す
+async function translateTitleFieldIfNeeded() {
+  const titleInput = document.getElementById('f-title');
+  if (!titleInput) return;
+  const targetLang = loadLang();
+  if (needsTranslation(titleInput.value, targetLang)) {
+    const translated = await aiTranslate(titleInput.value, targetLang);
+    if (translated && translated !== titleInput.value) {
+      titleInput.value = translated;
+    }
+  }
+}
+
+// 🔄ボタンの手動翻訳（言語判定をスキップして現在のUI言語に常に翻訳）
+async function manualTranslateTitle() {
+  const titleInput = document.getElementById('f-title');
+  const original = titleInput.value.trim();
+  if (!original) {
+    setUrlStatus('error', '⚠ タイトルが空です');
+    setTimeout(clearUrlStatus, 2000);
+    return;
+  }
+  const targetLang = loadLang();
+  setUrlStatus('loading', '翻訳中...');
+  try {
+    const translated = await aiTranslate(original, targetLang);
+    if (translated && translated !== original) {
+      titleInput.value = translated;
+      setUrlStatus('success', '✓ 翻訳しました');
+    } else {
+      setUrlStatus('success', '✓ 翻訳不要（または翻訳できませんでした）');
+    }
+    setTimeout(clearUrlStatus, 2500);
+  } catch (e) {
+    setUrlStatus('error', `⚠ 翻訳失敗: ${escHtml(e.message)}`);
+  }
+}
+
+async function populateFromParsed(parsed) {
+  // タイトル: 空の場合または自動取得済みの場合のみ上書き
+  if (parsed.title && (!document.getElementById('f-title').value.trim() || titleWasAutoFilled)) {
+    document.getElementById('f-title').value = parsed.title;
+    titleWasAutoFilled = false;
+    document.getElementById('title-autofill-badge').style.display = 'none';
+  }
+  // 注: AI が title を空で返してきた場合は既存値（oEmbed結果や手動入力）をそのまま残す。
+  // 言語が UI と違う場合は、🔄ボタンで個別翻訳できる。
+
+  // 基準人数
+  if (parsed.servings && Number.isInteger(parsed.servings) && parsed.servings > 0) {
+    document.getElementById('f-servings').value = parsed.servings;
+  }
+
+  // 材料: 上書き
+  if (parsed.ingredients && parsed.ingredients.length > 0) {
+    document.getElementById('ingredient-rows').innerHTML = '';
+    parsed.ingredients.forEach(ing => addIngredientRow(ing.name, ing.amount ?? '', ing.unit || ''));
+  }
+
+  // 作り方: 上書き
+  if (parsed.steps && parsed.steps.length > 0) {
+    document.getElementById('step-rows').innerHTML = '';
+    parsed.steps.forEach(s => addStepRow(s));
+  }
+}
+
+// ===== YOUTUBE OEMBED AUTO-FETCH =====
+let titleWasAutoFilled = false;
+let oEmbedTimer = null;
+
+function isYouTubeUrl(url) {
+  return /youtube\.com\/watch|youtu\.be\//i.test(url);
+}
+
+function setUrlStatus(type, msg) {
+  const el = document.getElementById('url-fetch-status');
+  el.className = 'url-status ' + type;
+  el.innerHTML = type === 'loading'
+    ? `<div class="spinner"></div>${msg}`
+    : msg;
+}
+
+function clearUrlStatus() {
+  const el = document.getElementById('url-fetch-status');
+  el.className = 'url-status';
+  el.innerHTML = '';
+}
+
+function updateYtDescHint(url) {
+  const wrap = document.getElementById('parse-yt-btn-wrap');
+  const link = document.getElementById('parse-yt-link');
+  const safe = safeUrl(url);
+  if (isYouTubeUrl(url) && safe !== '#') {
+    link.href = safe;
+    wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+async function fetchYouTubeTitle(url) {
+  const oEmbedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+  const res = await fetch(oEmbedUrl);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return data.title || '';
+}
+
+// URLフィールドの変更でソース自動検出 ＋ YouTube タイトル自動取得
+document.getElementById('f-url').addEventListener('input', function() {
+  const url = this.value.trim();
+  const detected = detectSource(url);
+  document.getElementById('f-source').value = detected;
+  updateYtDescHint(url);
+
+  clearTimeout(oEmbedTimer);
+  clearUrlStatus();
+
+  if (!isYouTubeUrl(url) || !url.startsWith('http') || !loadYtAutoFetch()) return;
+
+  oEmbedTimer = setTimeout(async () => {
+    setUrlStatus('loading', 'タイトルを取得中...');
+    try {
+      const title = await fetchYouTubeTitle(url);
+      const titleInput = document.getElementById('f-title');
+      // タイトルが空か、前回の自動取得値の場合のみ上書き（原文のまま入れる。翻訳は AI Parse か 🔄 ボタンで）
+      if (!titleInput.value.trim() || titleWasAutoFilled) {
+        titleInput.value = title;
+        titleWasAutoFilled = true;
+        document.getElementById('title-autofill-badge').style.display = 'inline-block';
+      }
+      setUrlStatus('success', '✓ タイトルを自動取得しました');
+      setTimeout(clearUrlStatus, 3000);
+    } catch {
+      setUrlStatus('error', '⚠ タイトルの取得に失敗しました（手動で入力してください）');
+    }
+  }, 500);
+});
+
+// タイトルを手動編集したら自動取得フラグを解除
+document.getElementById('f-title').addEventListener('input', function() {
+  titleWasAutoFilled = false;
+  document.getElementById('title-autofill-badge').style.display = 'none';
+});
+
+// キーボードショートカット
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeModal('settings-modal');
+    closeModal('detail-modal');
+    closeModal('add-modal');
+  }
+});
+
+// ===== INIT =====
+// IndexedDB 初期化 → メモリキャッシュ充填 → UI 描画 の順序を保つために async でラップ
+(async function init() {
+  await initRecipeStore();
+  recipes = loadRecipes();
+  applyI18n();
+  renderList();
+  checkBackupBanner();
+})();
+
+// ===== SERVICE WORKER 登録 =====
+// PWA としてオフライン動作・ホーム画面追加対応するために必要
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>

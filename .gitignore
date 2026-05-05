@@ -1,0 +1,32 @@
+# ===== Personal strategy notes (not for public release) =====
+# 競合調査・戦略決定など、開発者個人の思考メモは公開リポジトリから除外
+research-*.md
+decisions-*.md
+
+# ===== OS / Editor artifacts =====
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+
+# ===== Build / Dependency artifacts (将来用) =====
+node_modules/
+dist/
+build/
+.cache/
+
+# ===== Logs / Temp =====
+*.log
+*.tmp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

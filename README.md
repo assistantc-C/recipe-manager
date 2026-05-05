@@ -78,3 +78,7 @@ AIパース機能内蔵・ローカル完結・PWA対応のレシピ管理Webア
 ## ライセンス
 
 [MIT License](LICENSE)
+
+---
+
+[プライバシーポリシー](privacy-policy.md)

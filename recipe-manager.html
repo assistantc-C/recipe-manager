@@ -1081,6 +1081,32 @@
   </div>
 </div>
 
+<!-- ===== WELCOME MODAL ===== -->
+<div class="modal-overlay" id="welcome-modal">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <h2 data-i18n="welcome.title">🍳 レシピ管理へようこそ</h2>
+    </div>
+    <div class="modal-body">
+      <p data-i18n="welcome.intro" style="margin-bottom:16px;line-height:1.7">テキストやURLを貼るだけでAIがレシピを自動抽出。データはすべてあなたのブラウザ内に保存されます。</p>
+      <ul style="list-style:none;padding:0;margin-bottom:20px;display:flex;flex-direction:column;gap:6px;font-size:14px">
+        <li data-i18n="welcome.feat1">✅ ローカル完結（外部サーバーへの送信なし）</li>
+        <li data-i18n="welcome.feat2">✅ PWA対応（ホーム画面に追加できる）</li>
+        <li data-i18n="welcome.feat3">✅ 日本語 / English 切替対応</li>
+        <li data-i18n="welcome.feat4">✅ JSONでエクスポート・バックアップ可</li>
+      </ul>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;line-height:1.7">
+        <strong data-i18n="welcome.ai_title">🤖 AI自動解析を使うには</strong>
+        <p data-i18n="welcome.ai_body" style="margin-top:6px;font-size:13px;color:var(--text-muted)">Google Gemini（無料枠あり）または ChatGPT の APIキーを設定すると、URLを貼るだけでタイトル・材料・手順を自動抽出できます。APIキーなしでも手動でレシピを登録できます。</p>
+      </div>
+    </div>
+    <div class="modal-footer" style="flex-direction:column;gap:8px">
+      <button class="btn btn-primary" style="width:100%" onclick="closeWelcomeAndOpenSettings()" data-i18n="welcome.btn_setup">⚙ AIキーを設定して始める</button>
+      <button class="btn btn-ghost" style="width:100%" onclick="closeWelcomeModal()" data-i18n="welcome.btn_skip">まずは手動で始める →</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo-btn" style="display:none" onclick="undoDelete()">元に戻す</button></div>
 
 <script>
@@ -1173,6 +1199,18 @@ const I18N = {
     'settings.reset': 'リセット',
     'settings.privacy_title': '外部サービスとの通信について',
     'settings.privacy_body': 'このアプリは以下の外部サービスにリクエストを送信することがあります。<br>・<strong>Google Gemini API</strong>：AIによるレシピ解析時（設定したAPIキーを使用）<br>・<strong>YouTube oEmbed API</strong>：YouTubeのURLを入力した際のタイトル自動取得時<br>いずれもユーザーの操作時のみ通信が発生します。レシピデータはこのブラウザのローカルストレージにのみ保存され、外部サーバーへ送信されることはありません。',
+
+    // === Welcome Modal ===
+    'welcome.title': '🍳 レシピ管理へようこそ',
+    'welcome.intro': 'テキストやURLを貼るだけでAIがレシピを自動抽出。データはすべてあなたのブラウザ内に保存されます。',
+    'welcome.feat1': '✅ ローカル完結（外部サーバーへの送信なし）',
+    'welcome.feat2': '✅ PWA対応（ホーム画面に追加できる）',
+    'welcome.feat3': '✅ 日本語 / English 切替対応',
+    'welcome.feat4': '✅ JSONでエクスポート・バックアップ可',
+    'welcome.ai_title': '🤖 AI自動解析を使うには',
+    'welcome.ai_body': 'Google Gemini（無料枠あり）または ChatGPT の APIキーを設定すると、URLを貼るだけでタイトル・材料・手順を自動抽出できます。APIキーなしでも手動でレシピを登録できます。',
+    'welcome.btn_setup': '⚙ AIキーを設定して始める',
+    'welcome.btn_skip': 'まずは手動で始める →',
   },
   en: {
     'app.title': 'Recipe Manager',
@@ -1260,6 +1298,18 @@ const I18N = {
     'settings.reset': 'Reset',
     'settings.privacy_title': 'About external service communication',
     'settings.privacy_body': 'This app may send requests to the following external services:<br>・<strong>Google Gemini API</strong>: when AI parses a recipe (uses the configured API key)<br>・<strong>YouTube oEmbed API</strong>: when fetching titles from YouTube URLs<br>Both happen only when the user takes an action. Recipe data is stored only in this browser and never sent to any external server.',
+
+    // === Welcome Modal ===
+    'welcome.title': '🍳 Welcome to Recipe Manager',
+    'welcome.intro': 'Just paste text or a URL — AI will automatically extract the recipe. All data is stored in your browser.',
+    'welcome.feat1': '✅ Local-first (no external server)',
+    'welcome.feat2': '✅ PWA support (add to home screen)',
+    'welcome.feat3': '✅ Japanese / English UI',
+    'welcome.feat4': '✅ JSON export & backup',
+    'welcome.ai_title': '🤖 To use AI auto-parsing',
+    'welcome.ai_body': 'Set up a Google Gemini (free tier available) or ChatGPT API key, and you can extract recipes from any URL automatically. You can also add recipes manually without an API key.',
+    'welcome.btn_setup': '⚙ Set up AI key',
+    'welcome.btn_skip': 'Start manually →',
   }
 };
 
@@ -1815,6 +1865,26 @@ function deleteRecipe() {
   closeModal('detail-modal');
   renderList();
   showToastWithUndo(`「${escHtml(r.title)}」を削除しました`);
+}
+
+// ===== WELCOME MODAL =====
+const WELCOMED_KEY = 'recipe_manager_welcomed_v1';
+
+function checkFirstVisit() {
+  if (!localStorage.getItem(WELCOMED_KEY)) {
+    openModal('welcome-modal');
+  }
+}
+
+function closeWelcomeModal() {
+  localStorage.setItem(WELCOMED_KEY, '1');
+  closeModal('welcome-modal');
+}
+
+function closeWelcomeAndOpenSettings() {
+  localStorage.setItem(WELCOMED_KEY, '1');
+  closeModal('welcome-modal');
+  openSettingsModal();
 }
 
 // ===== MODAL HELPERS =====
@@ -2502,6 +2572,7 @@ document.addEventListener('keydown', e => {
   applyI18n();
   renderList();
   checkBackupBanner();
+  checkFirstVisit();
 })();
 
 // ===== SERVICE WORKER 登録 =====

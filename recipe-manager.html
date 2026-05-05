@@ -845,10 +845,10 @@
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label>URL <span class="required">*</span></label>
+        <label>URL <span style="font-size:12px;color:var(--text-muted);font-weight:normal" data-i18n="form.optional">（任意）</span></label>
         <input type="url" id="f-url" placeholder="https://...">
         <div class="field-error" id="error-url"></div>
-        <div class="form-hint" data-i18n="form.url_hint">YouTubeまたはWebサイトのURLを入力</div>
+        <div class="form-hint" data-i18n="form.url_hint">YouTubeやWebサイトのURL（省略可）</div>
         <div class="url-status" id="url-fetch-status"></div>
       </div>
       <div class="form-group">
@@ -1140,7 +1140,8 @@ const I18N = {
     // === Add/Edit Modal ===
     'modal.add_title': 'レシピを追加',
     'modal.edit_title': 'レシピを編集',
-    'form.url_hint': 'YouTubeまたはWebサイトのURLを入力',
+    'form.url_hint': 'YouTubeやWebサイトのURL（省略可）',
+    'form.optional': '（任意）',
     'form.servings': '基準人数',
     'form.source': 'ソース',
     'form.source.youtube': 'YouTube',
@@ -1239,7 +1240,8 @@ const I18N = {
     // === Add/Edit Modal ===
     'modal.add_title': 'Add Recipe',
     'modal.edit_title': 'Edit Recipe',
-    'form.url_hint': 'Enter a YouTube or website URL',
+    'form.url_hint': 'YouTube or website URL (optional)',
+    'form.optional': '(optional)',
     'form.servings': 'Servings',
     'form.source': 'Source',
     'form.source.youtube': 'YouTube',
@@ -1739,9 +1741,7 @@ function saveRecipe() {
 
   let hasError = false;
   if (!title) { setFieldError('f-title', 'error-title', 'タイトルを入力してください'); hasError = true; }
-  if (!url) {
-    setFieldError('f-url', 'error-url', 'URLを入力してください'); hasError = true;
-  } else if (safeUrl(url) === '#') {
+  if (url && safeUrl(url) === '#') {
     setFieldError('f-url', 'error-url', 'http:// または https:// から始まる正しいURLを入力してください'); hasError = true;
   }
   if (hasError) return;

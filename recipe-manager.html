@@ -1949,6 +1949,56 @@ function deleteRecipe() {
   showToastWithUndo(t('toast.recipe_deleted', { title: escHtml(r.title) }));
 }
 
+// ===== WEB SHARE TARGET HANDLER =====
+// PWA がインストールされていると、OS の「共有」メニューから起動された時に
+// クエリパラメータでデータが渡される。それを読み取ってフォームに流し込む。
+// manifest.json の share_target.params に対応：
+//   shared_url   ← 共有された URL
+//   shared_text  ← 共有されたテキスト（URL を含むことが多い）
+//   shared_title ← 共有されたタイトル（任意）
+function handleSharedData() {
+  const params = new URLSearchParams(window.location.search);
+  const sharedUrl = params.get('shared_url') || '';
+  const sharedText = params.get('shared_text') || '';
+  const sharedTitle = params.get('shared_title') || '';
+
+  if (!sharedUrl && !sharedText && !sharedTitle) return false;
+
+  // text に URL が含まれているケース（YouTubeアプリ等は text にURL付きで送ってくることがある）
+  let url = sharedUrl;
+  if (!url && sharedText) {
+    const match = sharedText.match(/https?:\/\/[^\s]+/);
+    if (match) url = match[0];
+  }
+
+  // ウェルカムモーダルが先に出ないよう、見たことにしておく
+  localStorage.setItem(WELCOMED_KEY, '1');
+
+  // モーダルを開いてフォームに流し込む
+  openAddModal();
+
+  if (url) {
+    const urlInput = document.getElementById('f-url');
+    urlInput.value = url;
+    // input イベントを発火 → 既存の YouTube タイトル自動取得・ソース自動判定が動く
+    urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  if (sharedTitle) {
+    document.getElementById('f-title').value = sharedTitle;
+  }
+  // URL に text しか含まれず URL が見つからない場合は、メモ欄に入れておく
+  if (!url && sharedText) {
+    document.getElementById('f-memo').value = sharedText;
+  }
+
+  // クエリを履歴から消す（リロードで再発火しないように）
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+
+  return true;
+}
+
 // ===== WELCOME MODAL =====
 const WELCOMED_KEY = 'recipe_manager_welcomed_v1';
 
@@ -2654,7 +2704,10 @@ document.addEventListener('keydown', e => {
   applyI18n();
   renderList();
   checkBackupBanner();
-  checkFirstVisit();
+  // 共有から起動された場合は専用処理（モーダルを開いて事前入力）
+  // それ以外で初回訪問ならウェルカムモーダル
+  const handled = handleSharedData();
+  if (!handled) checkFirstVisit();
 })();
 
 // ===== SERVICE WORKER 登録 =====

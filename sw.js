@@ -1,6 +1,6 @@
 // Service Worker for レシピ管理アプリ
 // バージョンを変えるとキャッシュが更新される
-const CACHE_VERSION = 'v20';
+const CACHE_VERSION = 'v21';
 const CACHE_NAME = `recipe-manager-${CACHE_VERSION}`;
 
 // オフラインでも動かすためにキャッシュするファイル一覧

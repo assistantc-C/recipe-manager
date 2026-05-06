@@ -2,6 +2,7 @@
   "name": "レシピ管理アプリ",
   "short_name": "レシピ",
   "description": "JSONベースでデータポータビリティの高い、ローカル完結型のレシピ管理アプリ",
+  "id": "/recipe-manager/recipe-manager.html",
   "start_url": "./recipe-manager.html",
   "scope": "./",
   "display": "standalone",

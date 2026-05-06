@@ -1999,6 +1999,26 @@ function handleSharedData() {
   return true;
 }
 
+// ===== APP SHORTCUTS HANDLER =====
+// PWA のホーム画面アイコン長押しで出る「ショートカット」から起動された時の処理。
+// manifest.json の shortcuts[].url に対応。
+function handleQuickAction() {
+  const params = new URLSearchParams(window.location.search);
+  const action = params.get('action');
+
+  if (action === 'add') {
+    // ウェルカムモーダルが先に出ないよう、見たことにしておく
+    localStorage.setItem(WELCOMED_KEY, '1');
+    openAddModal();
+    // クエリを履歴から消す（リロードで再発火しないように）
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    return true;
+  }
+  return false;
+}
+
 // ===== WELCOME MODAL =====
 const WELCOMED_KEY = 'recipe_manager_welcomed_v1';
 
@@ -2704,9 +2724,11 @@ document.addEventListener('keydown', e => {
   applyI18n();
   renderList();
   checkBackupBanner();
-  // 共有から起動された場合は専用処理（モーダルを開いて事前入力）
-  // それ以外で初回訪問ならウェルカムモーダル
-  const handled = handleSharedData();
+  // 起動形態に応じて分岐:
+  //  1. 共有から起動 → 専用処理（モーダルを開いて事前入力）
+  //  2. ホーム画面ショートカットから起動 → action に応じた処理
+  //  3. それ以外で初回訪問 → ウェルカムモーダル
+  const handled = handleSharedData() || handleQuickAction();
   if (!handled) checkFirstVisit();
 })();
 

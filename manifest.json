@@ -32,5 +32,16 @@
       "text": "shared_text",
       "url": "shared_url"
     }
-  }
+  },
+  "shortcuts": [
+    {
+      "name": "新しいレシピを追加",
+      "short_name": "追加",
+      "description": "レシピ追加フォームを直接開く",
+      "url": "./recipe-manager.html?action=add",
+      "icons": [
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    }
+  ]
 }

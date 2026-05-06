@@ -26,6 +26,7 @@
   "share_target": {
     "action": "./recipe-manager.html",
     "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
     "params": {
       "title": "shared_title",
       "text": "shared_text",

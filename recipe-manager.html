@@ -896,6 +896,21 @@
             <button class="btn btn-primary btn-sm" id="parse-btn" onclick="runParseWithAI()" data-i18n="parse.run">✨ AIで解析する</button>
             <div class="parse-status" id="parse-status"></div>
           </div>
+
+          <!-- Image-based parse -->
+          <div class="parse-image-section" style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)">
+            <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px" data-i18n="parse.image_label">📷 または画像から抽出（料理本・スクショ等）</div>
+            <input type="file" id="f-paste-image" accept="image/*" capture="environment" style="display:none" onchange="handleImageSelected(event)">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('f-paste-image').click()" data-i18n="parse.image_pick">画像を選択 / 撮影</button>
+            <div id="parse-image-preview" style="display:none;margin-top:10px">
+              <img id="parse-image-preview-img" style="max-width:100%;max-height:240px;border-radius:6px;border:1px solid var(--border);display:block">
+              <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" id="parse-image-btn" type="button" onclick="runParseWithImage()" data-i18n="parse.image_run">📷 この画像から抽出</button>
+                <button class="btn btn-ghost btn-sm" type="button" onclick="clearImagePreview()" data-i18n="parse.image_clear">キャンセル</button>
+                <span id="parse-image-info" style="font-size:12px;color:var(--text-muted)"></span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1032,12 +1047,13 @@
           <label data-i18n="settings.gemini_model">Gemini モデル</label>
           <input type="text" id="s-model" list="s-model-list" placeholder="gemini-2.5-flash">
           <datalist id="s-model-list">
-            <option value="gemini-2.5-flash" data-i18n="settings.gemini_recommended">gemini-2.5-flash（推奨）</option>
-            <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
-            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-            <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+            <option value="gemini-2.5-flash" data-i18n="settings.gemini_recommended">gemini-2.5-flash（推奨）📷</option>
+            <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite 📷</option>
+            <option value="gemini-2.0-flash">gemini-2.0-flash 📷</option>
+            <option value="gemini-1.5-flash">gemini-1.5-flash 📷</option>
           </datalist>
           <div class="form-hint" style="margin-top:4px" data-i18n="settings.model_hint">候補から選択するか、モデル名を直接入力できます</div>
+          <div class="form-hint" style="margin-top:4px;color:var(--primary)" data-i18n="settings.gemini_vision_hint">💡 すべてのGeminiモデルが画像認識（📷）に対応しています</div>
         </div>
       </div>
 
@@ -1057,13 +1073,15 @@
         </div>
         <div class="form-group" style="margin-top:16px">
           <label data-i18n="settings.chatgpt_model">ChatGPT モデル</label>
-          <input type="text" id="s-chatgpt-model" list="s-chatgpt-model-list" placeholder="gpt-4o">
+          <input type="text" id="s-chatgpt-model" list="s-chatgpt-model-list" placeholder="gpt-4o" oninput="updateChatGptVisionWarning()">
           <datalist id="s-chatgpt-model-list">
-            <option value="gpt-4o" data-i18n="settings.chatgpt_recommended">gpt-4o（推奨）</option>
-            <option value="gpt-4o-mini">gpt-4o-mini</option>
-            <option value="gpt-4-turbo">gpt-4-turbo</option>
+            <option value="gpt-4o" data-i18n="settings.chatgpt_recommended">gpt-4o（推奨）📷</option>
+            <option value="gpt-4o-mini">gpt-4o-mini 📷</option>
+            <option value="gpt-4-turbo">gpt-4-turbo 📷</option>
           </datalist>
           <div class="form-hint" style="margin-top:4px" data-i18n="settings.model_hint">候補から選択するか、モデル名を直接入力できます</div>
+          <div class="form-hint" style="margin-top:4px;color:var(--primary)" data-i18n="settings.chatgpt_vision_hint">💡 画像認識（📷）対応: gpt-4o-mini / gpt-4o / gpt-4-turbo</div>
+          <div id="chatgpt-vision-warning" class="form-hint" style="display:none;margin-top:6px;color:#c53b3b" data-i18n="settings.chatgpt_vision_warning">⚠ このモデルは画像認識（📷）に対応していません</div>
         </div>
       </div>
       <div class="form-group" style="margin-top:16px">
@@ -1167,6 +1185,19 @@ const I18N = {
     'form.memo': 'メモ',
     'form.memo_placeholder': 'ポイント・感想・アレンジなど...',
     'parse.toggle': '✨ 概要欄テキストを貼り付けてAIで自動解析',
+    'parse.image_label': '📷 または画像から抽出（料理本・スクショ等）',
+    'parse.image_pick': '画像を選択 / 撮影',
+    'parse.image_run': '📷 この画像から抽出',
+    'parse.image_clear': 'キャンセル',
+    'parse.image_loading': '画像を解析中...',
+    'parse.image_err_type': '⚠ 画像ファイルを選択してください',
+    'parse.image_err_size': '⚠ 画像が大きすぎます ({size}MB)。5MB以下にしてください',
+    'parse.image_err_read': '⚠ 画像の読み込みに失敗しました',
+    'parse.image_err_none': '⚠ 画像が選択されていません',
+    'parse.image_err_chatgpt_no_vision': '⚠ 設定中のモデル（{model}）は画像認識に対応していません。設定から gpt-4o-mini 等を選んでください',
+    'parse.err_no_gemini_key': '⚠ Gemini APIキーが設定されていません',
+    'parse.err_no_chatgpt_key': '⚠ ChatGPT APIキーが設定されていません',
+    'parse.open_settings': '設定を開く',
     'parse.yt_open': '▶ YouTubeで概要欄を開く',
     'parse.yt_hint': '→ コピーして下に貼り付けてください',
     'parse.placeholder': 'YouTubeの概要欄やレシピページのテキストをここに貼り付けてください。レシピ名・材料・作り方を自動で入力します。',
@@ -1208,8 +1239,11 @@ const I18N = {
     'settings.gemini_get_link': 'Google AI StudioでAPIキーを取得（検索） →',
     'settings.chatgpt_get_link': 'OpenAI PlatformでAPIキーを取得（検索） →',
     'settings.model_hint': '候補から選択するか、モデル名を直接入力できます',
-    'settings.gemini_recommended': 'gemini-2.5-flash（推奨）',
-    'settings.chatgpt_recommended': 'gpt-4o（推奨）',
+    'settings.gemini_recommended': 'gemini-2.5-flash（推奨）📷',
+    'settings.chatgpt_recommended': 'gpt-4o（推奨）📷',
+    'settings.gemini_vision_hint': '💡 すべてのGeminiモデルが画像認識（📷）に対応しています',
+    'settings.chatgpt_vision_hint': '💡 画像認識（📷）対応: gpt-4o-mini / gpt-4o / gpt-4-turbo',
+    'settings.chatgpt_vision_warning': '⚠ このモデルは画像認識（📷）に対応していません',
     'settings.yt_autofetch': 'YouTubeのURLからタイトルを自動取得する',
     'settings.yt_autofetch_hint': 'オフにすると YouTube oEmbed API への通信が発生しません',
     'settings.token_usage': 'トークン使用量（累計）',
@@ -1295,6 +1329,19 @@ const I18N = {
     'parse.yt_hint': '→ Copy and paste it below',
     'parse.placeholder': 'Paste the YouTube description or recipe page text here. The title, ingredients, and steps will be filled in automatically.',
     'parse.run': '✨ Parse with AI',
+    'parse.image_label': '📷 Or extract from an image (cookbook, screenshot, etc.)',
+    'parse.image_pick': 'Pick / take photo',
+    'parse.image_run': '📷 Extract from this image',
+    'parse.image_clear': 'Cancel',
+    'parse.image_loading': 'Analyzing image...',
+    'parse.image_err_type': '⚠ Please pick an image file',
+    'parse.image_err_size': '⚠ Image too large ({size}MB). Please use 5MB or smaller',
+    'parse.image_err_read': '⚠ Failed to read the image',
+    'parse.image_err_none': '⚠ No image selected',
+    'parse.image_err_chatgpt_no_vision': '⚠ The configured model ({model}) does not support image recognition. Please choose gpt-4o-mini etc. in Settings',
+    'parse.err_no_gemini_key': '⚠ Gemini API key is not configured',
+    'parse.err_no_chatgpt_key': '⚠ ChatGPT API key is not configured',
+    'parse.open_settings': 'Open settings',
     'section.ingredients': 'Ingredients',
     'section.steps': 'Steps',
     'action.add_ingredient': '+ Add Ingredient',
@@ -1332,8 +1379,11 @@ const I18N = {
     'settings.gemini_get_link': 'Get an API key from Google AI Studio (search) →',
     'settings.chatgpt_get_link': 'Get an API key from OpenAI Platform (search) →',
     'settings.model_hint': 'Select from suggestions or enter a model name directly',
-    'settings.gemini_recommended': 'gemini-2.5-flash (recommended)',
-    'settings.chatgpt_recommended': 'gpt-4o (recommended)',
+    'settings.gemini_recommended': 'gemini-2.5-flash (recommended) 📷',
+    'settings.chatgpt_recommended': 'gpt-4o (recommended) 📷',
+    'settings.gemini_vision_hint': '💡 All Gemini models support image recognition (📷)',
+    'settings.chatgpt_vision_hint': '💡 Image recognition (📷) supported: gpt-4o-mini / gpt-4o / gpt-4-turbo',
+    'settings.chatgpt_vision_warning': '⚠ This model does not support image recognition (📷)',
     'settings.yt_autofetch': 'Auto-fetch title from YouTube URLs',
     'settings.yt_autofetch_hint': 'When disabled, no requests are sent to the YouTube oEmbed API',
     'settings.token_usage': 'Token usage (cumulative)',
@@ -2177,6 +2227,7 @@ function openSettingsModal() {
   document.getElementById('s-chatgpt-key').value = loadChatGptKey();
   document.getElementById('toggle-chatgpt-btn').textContent = t('settings.show');
   document.getElementById('s-chatgpt-model').value = loadChatGptModel();
+  updateChatGptVisionWarning();
   // その他
   switchProviderSection();
   document.getElementById('s-yt-autofetch').checked = loadYtAutoFetch();
@@ -2243,6 +2294,7 @@ function resetParseSection() {
   document.getElementById('parse-toggle-icon').classList.remove('open');
   document.getElementById('f-paste-text').value = '';
   setParseStatus('', '');
+  clearImagePreview();
 }
 
 function setParseStatus(type, msg) {
@@ -2441,6 +2493,249 @@ async function runParseWithChatGpt() {
     await handleParseSuccess(raw, data.usage?.prompt_tokens || 0, data.usage?.completion_tokens || 0);
   } catch (e) {
     setParseStatus('error', `⚠ 解析失敗: ${escHtml(e.message)}`);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ===== IMAGE PARSE (Gemini Vision / OpenAI Vision) =====
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024; // 5MB
+
+// 画像パース用の状態（モーダル単位で1枚保持）
+let _pickedImage = null; // { dataUrl, base64, mimeType, sizeBytes }
+
+// OpenAI モデルが Vision 対応か判定
+// 既知の対応: gpt-4o*, gpt-4-turbo*, gpt-4.1*, o1*, o3*
+// 既知の非対応: gpt-3.5-*, gpt-4 (無印・正確一致)
+// 不明モデルは警告を出さない（サイレント）
+function isOpenAiKnownNonVision(model) {
+  if (!model) return false;
+  const m = model.trim().toLowerCase();
+  if (m === 'gpt-4') return true;
+  if (m.startsWith('gpt-3.5')) return true;
+  if (m.startsWith('text-')) return true;
+  return false;
+}
+
+function isOpenAiKnownVision(model) {
+  if (!model) return false;
+  const m = model.trim().toLowerCase();
+  if (m.startsWith('gpt-4o')) return true;
+  if (m.startsWith('gpt-4-turbo')) return true;
+  if (m.startsWith('gpt-4.1')) return true;
+  if (m === 'o1' || m.startsWith('o1-')) return true;
+  if (m === 'o3' || m.startsWith('o3-')) return true;
+  return false;
+}
+
+// 設定画面：ChatGPT モデルの Vision 警告表示更新
+function updateChatGptVisionWarning() {
+  const input = document.getElementById('s-chatgpt-model');
+  const warn  = document.getElementById('chatgpt-vision-warning');
+  if (!input || !warn) return;
+  const model = input.value.trim();
+  warn.style.display = isOpenAiKnownNonVision(model) ? 'block' : 'none';
+}
+
+// 画像が選択されたとき
+function handleImageSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  if (!/^image\//.test(file.type)) {
+    setParseStatus('error', t('parse.image_err_type'));
+    event.target.value = '';
+    return;
+  }
+  if (file.size > IMAGE_MAX_BYTES) {
+    const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+    setParseStatus('error', t('parse.image_err_size').replace('{size}', sizeMb));
+    event.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    const commaIdx = dataUrl.indexOf(',');
+    const base64 = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : '';
+    _pickedImage = {
+      dataUrl,
+      base64,
+      mimeType: file.type || 'image/jpeg',
+      sizeBytes: file.size
+    };
+    document.getElementById('parse-image-preview-img').src = dataUrl;
+    document.getElementById('parse-image-preview').style.display = 'block';
+    const info = document.getElementById('parse-image-info');
+    if (info) {
+      const sizeKb = Math.round(file.size / 1024);
+      info.textContent = `${file.name} (${sizeKb} KB)`;
+    }
+    setParseStatus('', '');
+  };
+  reader.onerror = () => {
+    setParseStatus('error', t('parse.image_err_read'));
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImagePreview() {
+  _pickedImage = null;
+  const fileInput = document.getElementById('f-paste-image');
+  if (fileInput) fileInput.value = '';
+  const preview = document.getElementById('parse-image-preview');
+  if (preview) preview.style.display = 'none';
+  const img = document.getElementById('parse-image-preview-img');
+  if (img) img.src = '';
+  const info = document.getElementById('parse-image-info');
+  if (info) info.textContent = '';
+}
+
+// 画像用プロンプト（テキスト引数なし版）
+function buildRecipeImagePrompt(existingTitle) {
+  const lang = loadLang();
+  const trimmedTitle = (existingTitle || '').trim();
+
+  if (lang === 'en') {
+    const titleSection = trimmedTitle
+      ? `\nExisting title (already filled by user or auto-fetched): "${trimmedTitle}"\n→ If a clear recipe name appears in the image, use that. Otherwise, translate this existing title to English.\n`
+      : '';
+    return `Extract recipe information from the attached image (cookbook page, web screenshot, video frame, etc.).${titleSection}
+
+If the image contains multiple recipes, choose the most prominent one.
+If a field cannot be read clearly, return an empty string or null.
+
+Extraction rules:
+- title: recipe name. If existing title is provided above, prefer using/translating it unless the image contains a clearer name. Empty string if absolutely nothing.
+- servings: integer only (e.g. "serves 2" → 2, "4人分" → 4). null if not found.
+- ingredients[].name: ingredient name in English.
+- ingredients[].amount: pure number only. Use null for vague amounts like "to taste", "a little", "適量".
+- ingredients[].unit: unit (e.g. "g", "ml", "tbsp", "tsp", "piece"). Empty string if none.
+- steps: cooking steps in order, in English.
+
+IMPORTANT: Output ALL strings (title, ingredient names, units, steps) in English. Translate from the source language if needed.`;
+  }
+  // ja (default)
+  const titleSection = trimmedTitle
+    ? `\n既存タイトル（ユーザー入力 or 自動取得済み）: "${trimmedTitle}"\n→ 画像内に明確なレシピ名があればそれを優先。なければこの既存タイトルを日本語に翻訳して使う。\n`
+    : '';
+  return `添付画像（料理本のページ・ウェブページのスクショ・動画のフレーム等）からレシピ情報を抽出してください。${titleSection}
+
+複数のレシピが写っている場合は、最も主要な1つを選んでください。
+読み取れない項目は空文字 or null で返してください。
+
+抽出ルール:
+- title: レシピ名。既存タイトルが提供されている場合、画像に明確な名前がなければそれを翻訳して使う。何もなければ空文字。
+- servings: 「2人分」「4人前」などから整数のみ抽出。見つからなければ null
+- ingredients[].name: 材料名を日本語で
+- ingredients[].amount: 純粋な数値のみ。「適量」「少々」「お好みで」は null
+- ingredients[].unit: 単位（個・g・ml・大さじ等）。なければ空文字
+- steps: 作り方を順番通りの配列で、日本語で。なければ空配列
+
+重要: title・ingredients[].name・ingredients[].unit・steps はすべて日本語で出力してください。元の画像が他言語でも翻訳すること。`;
+}
+
+async function runParseWithImage() {
+  if (!_pickedImage) {
+    setParseStatus('error', t('parse.image_err_none'));
+    return;
+  }
+  const provider = loadAiProvider();
+  if (provider === 'chatgpt') return runParseImageWithChatGpt();
+  return runParseImageWithGemini();
+}
+
+async function runParseImageWithGemini() {
+  const apiKey = loadApiKey();
+  if (!apiKey) {
+    setParseStatus('error', `${t('parse.err_no_gemini_key')} &nbsp;<button onclick="openSettingsModal()" style="padding:3px 8px;border:1px solid currentColor;border-radius:4px;background:none;cursor:pointer;font-size:12px;color:inherit">${t('parse.open_settings')}</button>`);
+    return;
+  }
+  if (!_pickedImage) { setParseStatus('error', t('parse.image_err_none')); return; }
+
+  const btn = document.getElementById('parse-image-btn');
+  btn.disabled = true;
+  setParseStatus('loading', t('parse.image_loading'));
+  try {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${loadModel()}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: buildRecipeImagePrompt(document.getElementById('f-title').value) },
+            { inline_data: { mime_type: _pickedImage.mimeType, data: _pickedImage.base64 } }
+          ]
+        }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: GEMINI_RECIPE_SCHEMA
+        }
+      })
+    });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err?.error?.message || `HTTP ${res.status}`); }
+    const data = await res.json();
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    await handleParseSuccess(raw, data.usageMetadata?.promptTokenCount || 0, data.usageMetadata?.candidatesTokenCount || 0);
+  } catch (e) {
+    setParseStatus('error', `⚠ ${escHtml(e.message)}`);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function runParseImageWithChatGpt() {
+  const apiKey = loadChatGptKey();
+  if (!apiKey) {
+    setParseStatus('error', `${t('parse.err_no_chatgpt_key')} &nbsp;<button onclick="openSettingsModal()" style="padding:3px 8px;border:1px solid currentColor;border-radius:4px;background:none;cursor:pointer;font-size:12px;color:inherit">${t('parse.open_settings')}</button>`);
+    return;
+  }
+  if (!_pickedImage) { setParseStatus('error', t('parse.image_err_none')); return; }
+
+  // Vision 非対応モデルなら止める（自動切替はしない方針）
+  const model = loadChatGptModel();
+  if (isOpenAiKnownNonVision(model)) {
+    setParseStatus('error', `${t('parse.image_err_chatgpt_no_vision').replace('{model}', escHtml(model))} &nbsp;<button onclick="openSettingsModal()" style="padding:3px 8px;border:1px solid currentColor;border-radius:4px;background:none;cursor:pointer;font-size:12px;color:inherit">${t('parse.open_settings')}</button>`);
+    return;
+  }
+
+  const btn = document.getElementById('parse-image-btn');
+  btn.disabled = true;
+  setParseStatus('loading', t('parse.image_loading'));
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: buildRecipeImagePrompt(document.getElementById('f-title').value) },
+            { type: 'image_url', image_url: { url: _pickedImage.dataUrl } }
+          ]
+        }],
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'recipe',
+            strict: true,
+            schema: OPENAI_RECIPE_SCHEMA
+          }
+        }
+      })
+    });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err?.error?.message || `HTTP ${res.status}`); }
+    const data = await res.json();
+    const raw = data.choices?.[0]?.message?.content || '';
+    await handleParseSuccess(raw, data.usage?.prompt_tokens || 0, data.usage?.completion_tokens || 0);
+  } catch (e) {
+    setParseStatus('error', `⚠ ${escHtml(e.message)}`);
   } finally {
     btn.disabled = false;
   }

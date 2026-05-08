@@ -1,0 +1,63 @@
+# GitHub Pages デプロイ + SW キャッシュバージョン自動バンプ
+#
+# このワークフローを動かすには Pages のソースを切り替える必要がある:
+#   Settings → Pages → Source: "GitHub Actions"
+#
+# 動作:
+#   1. main に push されると起動
+#   2. sw.js の CACHE_VERSION を commit SHA 短縮版（例: 'v-a1b2c3d'）に置換
+#   3. リポジトリ全体を Pages artifact として upload
+#   4. Pages にデプロイ
+#
+# 結果: 毎回必ず違うバージョンの sw.js が配信されるため、
+#       手動バンプ作業は不要になる。
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # 手動実行も可能
+
+# Pages デプロイに必要な権限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時実行を1つに制限（後の push で前の deploy をキャンセル）
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bump SW cache version with commit SHA
+        run: |
+          SHA_SHORT="${GITHUB_SHA::7}"
+          NEW_VERSION="v-${SHA_SHORT}"
+          echo "Bumping CACHE_VERSION to: ${NEW_VERSION}"
+          sed -i "s/const CACHE_VERSION = '.*';/const CACHE_VERSION = '${NEW_VERSION}';/" sw.js
+          echo "--- sw.js head ---"
+          head -5 sw.js
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,64 @@
+name: 🐛 バグ報告 / Bug Report
+description: 動作の不具合を報告する / Report a malfunction
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ご報告ありがとうございます。再現に必要な情報のご記入をお願いします。
+        Thanks for reporting! Please fill in the details below to help reproduce the issue.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 何が起きましたか？ / What happened?
+      description: できるだけ具体的に / Please be specific
+      placeholder: |
+        例：「レシピを追加」を押したら画面が白くなった
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 再現手順 / Steps to reproduce
+      placeholder: |
+        1. アプリを開く
+        2. 「レシピを追加」をタップ
+        3. URLを入力 → ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待した動作 / Expected behavior
+    validations:
+      required: false
+
+  - type: input
+    id: browser
+    attributes:
+      label: ブラウザ・OS / Browser & OS
+      placeholder: 例：Chrome 120 / Windows 11、Safari / iOS 17
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ai-provider
+    attributes:
+      label: 使用しているAIプロバイダー / AI provider
+      options:
+        - 使っていない / Not using
+        - Google Gemini
+        - OpenAI ChatGPT
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: スクリーンショット（任意） / Screenshots (optional)
+      description: 画像をドラッグ&ドロップで添付できます / You can drag & drop images here
+    validations:
+      required: false

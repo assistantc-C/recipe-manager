@@ -1,0 +1,12 @@
+# Issue 作成時の挙動カスタマイズ
+# - blank_issues_enabled: false で「白紙の Issue」をブロック → 必ずテンプレートを選ばせる
+# - contact_links: テンプレート選択画面に追加リンクを表示
+
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 README を見る / View README
+    url: https://github.com/assistantc-C/recipe-manager#readme
+    about: 使い方・特徴・FAQ はこちら / Usage, features, and FAQ are documented here
+  - name: 🔒 プライバシーポリシー / Privacy Policy
+    url: https://github.com/assistantc-C/recipe-manager/blob/main/privacy-policy.md
+    about: データの取り扱いについて / How your data is handled

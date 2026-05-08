@@ -1,0 +1,23 @@
+name: ❓ 質問 / Question
+description: 使い方やセットアップに関する質問 / Questions about usage or setup
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        まず [README](https://github.com/assistantc-C/recipe-manager#readme) もご確認ください。
+        Please also check the [README](https://github.com/assistantc-C/recipe-manager#readme) first.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: 質問内容 / Your question
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: ブラウザ・OS（必要であれば） / Browser & OS (if relevant)
+    validations:
+      required: false

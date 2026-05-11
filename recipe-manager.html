@@ -861,6 +861,20 @@
       <button class="modal-close" onclick="closeModal('add-modal')">✕</button>
     </div>
     <div class="modal-body">
+
+      <!-- Clipboard URL Detection Banner -->
+      <div id="clipboard-banner" style="display:none;align-items:flex-start;gap:10px;padding:12px;background:linear-gradient(to right, rgba(224,123,57,0.10), rgba(224,123,57,0.03));border:1px solid rgba(224,123,57,0.35);border-radius:8px;margin-bottom:16px">
+        <div style="font-size:20px;flex-shrink:0;line-height:1">📋</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;color:var(--text);margin-bottom:4px;font-weight:500" data-i18n="clipboard.title">クリップボードに URL があります</div>
+          <div id="clipboard-banner-url" style="font-size:12px;color:var(--text-muted);word-break:break-all;font-family:'SFMono-Regular',Consolas,monospace;margin-bottom:8px"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-primary btn-sm" onclick="useClipboardUrl()" data-i18n="clipboard.use">この URL を使う</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="dismissClipboardBanner()" data-i18n="clipboard.dismiss">使わない</button>
+          </div>
+        </div>
+      </div>
+
       <div class="form-group">
         <label>URL <span style="font-size:12px;color:var(--text-muted);font-weight:normal" data-i18n="form.optional">（任意）</span></label>
         <input type="url" id="f-url" placeholder="https://...">
@@ -1186,6 +1200,9 @@ const I18N = {
     'form.memo': 'メモ',
     'form.memo_placeholder': 'ポイント・感想・アレンジなど...',
     'parse.toggle': '✨ テキストまたは画像からAIで自動入力',
+    'clipboard.title': 'クリップボードに URL があります',
+    'clipboard.use': 'この URL を使う',
+    'clipboard.dismiss': '使わない',
     'parse.image_label': '📷 または画像から抽出（料理本・スクショ等）',
     'parse.image_pick': '画像を選択 / 撮影',
     'parse.image_run': '📷 この画像から抽出',
@@ -1330,6 +1347,9 @@ const I18N = {
     'parse.yt_hint': '→ Copy and paste it below',
     'parse.placeholder': 'Paste the YouTube description or recipe page text here. The title, ingredients, and steps will be filled in automatically.',
     'parse.run': '✨ Parse with AI',
+    'clipboard.title': 'Found a URL in your clipboard',
+    'clipboard.use': 'Use this URL',
+    'clipboard.dismiss': 'Dismiss',
     'parse.image_label': '📷 Or extract from an image (cookbook, screenshot, etc.)',
     'parse.image_pick': 'Pick / take photo',
     'parse.image_run': '📷 Extract from this image',
@@ -1820,8 +1840,12 @@ function openAddModal() {
   clearUrlStatus();
   updateYtDescHint('');
   resetParseSection();
+  dismissClipboardBanner();
   addIngredientRow();
   openModal('add-modal');
+  // クリップボードに URL があれば検出して取り込み提案
+  // user gesture が必要なので openModal 直後に同期チェーンで実行
+  tryDetectClipboardUrl();
 }
 
 function editRecipe() {
@@ -2068,6 +2092,56 @@ function handleQuickAction() {
     return true;
   }
   return false;
+}
+
+// ===== CLIPBOARD URL DETECTION =====
+// 追加モーダルを開いた瞬間にクリップボードを覗いて、URL があれば取り込み提案
+let _clipboardDetectedUrl = null;
+
+// クリップボードの中身が URL なら取り込みバナーを出す
+// 注意：navigator.clipboard.readText() は user gesture が必要。openAddModal のような
+// onclick 由来の呼び出しから連続実行する必要がある
+function tryDetectClipboardUrl() {
+  if (!navigator.clipboard || !navigator.clipboard.readText) return;
+  navigator.clipboard.readText().then(text => {
+    if (!text) return;
+    const trimmed = text.trim();
+    // URL らしさを判定（http/https のみ）
+    if (!/^https?:\/\/\S+/i.test(trimmed)) return;
+    // URL 欄に既に同じ URL が入っていればスキップ
+    const currentUrl = (document.getElementById('f-url').value || '').trim();
+    if (currentUrl === trimmed) return;
+    showClipboardBanner(trimmed);
+  }).catch(() => {
+    // permission 拒否・user gesture 切れ等は静かに諦める
+  });
+}
+
+function showClipboardBanner(url) {
+  _clipboardDetectedUrl = url;
+  const banner = document.getElementById('clipboard-banner');
+  const urlDisplay = document.getElementById('clipboard-banner-url');
+  if (!banner || !urlDisplay) return;
+  // 長い URL は省略表示
+  const displayUrl = url.length > 80 ? url.slice(0, 77) + '...' : url;
+  urlDisplay.textContent = displayUrl;
+  banner.style.display = 'flex';
+}
+
+function dismissClipboardBanner() {
+  _clipboardDetectedUrl = null;
+  const banner = document.getElementById('clipboard-banner');
+  if (banner) banner.style.display = 'none';
+}
+
+function useClipboardUrl() {
+  if (!_clipboardDetectedUrl) return;
+  const urlField = document.getElementById('f-url');
+  if (!urlField) return;
+  urlField.value = _clipboardDetectedUrl;
+  // 既存の URL ハンドラ（oEmbed タイトル取得など）を発火
+  urlField.dispatchEvent(new Event('input', { bubbles: true }));
+  dismissClipboardBanner();
 }
 
 // ===== WELCOME MODAL =====

@@ -1203,6 +1203,14 @@ const I18N = {
     'clipboard.title': 'クリップボードに URL があります',
     'clipboard.use': 'この URL を使う',
     'clipboard.dismiss': '使わない',
+    'url.fetching': 'タイトルを取得中...',
+    'url.fetched': '✓ タイトルを自動取得しました',
+    'url.open_yt': '▶ YouTubeで開く',
+    'url.err_restricted': '⚠ この動画は埋め込み制限のためタイトル自動取得できません（年齢制限・限定公開・埋め込み禁止など）。手動で入力してください',
+    'url.err_notfound': '⚠ 動画が見つかりません（削除済み or 非公開）',
+    'url.err_server': '⚠ YouTube 側の一時障害です（HTTP {code}）。少し待って再試行してください',
+    'url.err_other': '⚠ タイトル取得失敗（HTTP {code}）',
+    'url.err_network': '⚠ ネットワークエラー。接続を確認してください',
     'parse.image_label': '📷 または画像から抽出（料理本・スクショ等）',
     'parse.image_pick': '画像を選択 / 撮影',
     'parse.image_run': '📷 この画像から抽出',
@@ -1350,6 +1358,14 @@ const I18N = {
     'clipboard.title': 'Found a URL in your clipboard',
     'clipboard.use': 'Use this URL',
     'clipboard.dismiss': 'Dismiss',
+    'url.fetching': 'Fetching title...',
+    'url.fetched': '✓ Title auto-fetched',
+    'url.open_yt': '▶ Open in YouTube',
+    'url.err_restricted': '⚠ This video has embedding restricted (age-restricted, unlisted, or embed disabled). Please enter the title manually',
+    'url.err_notfound': '⚠ Video not found (deleted or private)',
+    'url.err_server': '⚠ YouTube temporary issue (HTTP {code}). Please try again in a moment',
+    'url.err_other': '⚠ Failed to fetch title (HTTP {code})',
+    'url.err_network': '⚠ Network error. Please check your connection',
     'parse.image_label': '📷 Or extract from an image (cookbook, screenshot, etc.)',
     'parse.image_pick': 'Pick / take photo',
     'parse.image_run': '📷 Extract from this image',
@@ -3015,7 +3031,38 @@ let titleWasAutoFilled = false;
 let oEmbedTimer = null;
 
 function isYouTubeUrl(url) {
-  return /youtube\.com\/watch|youtu\.be\//i.test(url);
+  // www / m / shorts / youtu.be すべて対応
+  return /(?:youtube\.com\/watch|youtu\.be\/|youtube\.com\/shorts\/|m\.youtube\.com\/watch)/i.test(url);
+}
+
+// oEmbed が確実に受け付ける形に正規化
+// - Shorts URL → 通常の watch URL に変換
+// - m.youtube.com → www.youtube.com
+// - 不要なクエリパラメータ（?si= など）を除去（v= だけ残す）
+function normalizeYouTubeUrl(url) {
+  try {
+    const u = new URL(url);
+    // youtu.be 短縮 → www.youtube.com/watch?v=...
+    if (u.hostname === 'youtu.be') {
+      const id = u.pathname.slice(1).split('/')[0];
+      if (id) return `https://www.youtube.com/watch?v=${id}`;
+    }
+    // Shorts → 通常の watch
+    const shortsMatch = u.pathname.match(/^\/shorts\/([^/?]+)/);
+    if (shortsMatch) return `https://www.youtube.com/watch?v=${shortsMatch[1]}`;
+    // m.youtube.com → www.youtube.com
+    if (u.hostname === 'm.youtube.com' || u.hostname === 'music.youtube.com') {
+      u.hostname = 'www.youtube.com';
+    }
+    // watch URL なら v= だけ残して他は捨てる
+    if (u.pathname === '/watch') {
+      const id = u.searchParams.get('v');
+      if (id) return `https://www.youtube.com/watch?v=${id}`;
+    }
+    return u.toString();
+  } catch {
+    return url;
+  }
 }
 
 function setUrlStatus(type, msg) {
@@ -3045,9 +3092,15 @@ function updateYtDescHint(url) {
 }
 
 async function fetchYouTubeTitle(url) {
-  const oEmbedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+  const normalized = normalizeYouTubeUrl(url);
+  const oEmbedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(normalized)}&format=json`;
   const res = await fetch(oEmbedUrl);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    // status を error に持たせて呼び出し側で分岐できるようにする
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
   const data = await res.json();
   return data.title || '';
 }
@@ -3065,7 +3118,7 @@ document.getElementById('f-url').addEventListener('input', function() {
   if (!isYouTubeUrl(url) || !url.startsWith('http') || !loadYtAutoFetch()) return;
 
   oEmbedTimer = setTimeout(async () => {
-    setUrlStatus('loading', 'タイトルを取得中...');
+    setUrlStatus('loading', t('url.fetching'));
     try {
       const title = await fetchYouTubeTitle(url);
       const titleInput = document.getElementById('f-title');
@@ -3075,10 +3128,27 @@ document.getElementById('f-url').addEventListener('input', function() {
         titleWasAutoFilled = true;
         document.getElementById('title-autofill-badge').style.display = 'inline-block';
       }
-      setUrlStatus('success', '✓ タイトルを自動取得しました');
+      setUrlStatus('success', t('url.fetched'));
       setTimeout(clearUrlStatus, 3000);
-    } catch {
-      setUrlStatus('error', '⚠ タイトルの取得に失敗しました（手動で入力してください）');
+    } catch (e) {
+      // HTTP コード別に親切なメッセージを出し分け
+      const safeUrlHref = safeUrl(normalizeYouTubeUrl(url));
+      const openLink = safeUrlHref !== '#'
+        ? ` &nbsp;<a href="${safeUrlHref}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">${escHtml(t('url.open_yt'))}</a>`
+        : '';
+      let msg;
+      if (e.status === 401 || e.status === 403) {
+        msg = t('url.err_restricted') + openLink;
+      } else if (e.status === 404) {
+        msg = t('url.err_notfound');
+      } else if (e.status >= 500) {
+        msg = t('url.err_server').replace('{code}', String(e.status));
+      } else if (e.status) {
+        msg = t('url.err_other').replace('{code}', String(e.status));
+      } else {
+        msg = t('url.err_network');
+      }
+      setUrlStatus('error', msg);
     }
   }, 500);
 });

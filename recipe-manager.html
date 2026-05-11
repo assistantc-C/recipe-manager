@@ -2555,7 +2555,11 @@ ${text}
 重要: title・ingredients[].name・ingredients[].unit・steps はすべて日本語で出力してください。元テキストが他言語でも翻訳すること。`;
 }
 
-async function handleParseSuccess(data, inputTokens, outputTokens, isImage = false) {
+async function handleParseSuccess(data, inputTokens, outputTokens, mode = 'text') {
+  // 後方互換: 旧コードが boolean (isImage) を渡している場合も拾う
+  if (mode === true) mode = 'image';
+  else if (mode === false) mode = 'text';
+
   const cumulative = addTokenUsage(inputTokens, outputTokens);
   renderTokenUsage();
   let parsed;
@@ -2568,7 +2572,12 @@ async function handleParseSuccess(data, inputTokens, outputTokens, isImage = fal
   await populateFromParsed(parsed);
   const tokenInfo = inputTokens ? `　<span style="color:var(--text-muted);font-size:12px">今回 ${(inputTokens+outputTokens).toLocaleString()} トークン / 累計 ${(cumulative.input+cumulative.output).toLocaleString()}</span>` : '';
   const successMsg = `✓ 解析完了（材料 ${(parsed.ingredients||[]).length}品・手順 ${(parsed.steps||[]).length}工程）${tokenInfo}`;
-  (isImage ? setImageParseStatus : setParseStatus)('success', successMsg);
+  // mode に応じて適切な status setter へ
+  let setter;
+  if (mode === 'image') setter = setImageParseStatus;
+  else if (mode === 'url') setter = setUrlStatus;
+  else setter = setParseStatus;
+  setter('success', successMsg);
   return parsed;
 }
 
@@ -2802,7 +2811,7 @@ async function runParseImageWithGemini() {
     if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err?.error?.message || `HTTP ${res.status}`); }
     const data = await res.json();
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    await handleParseSuccess(raw, data.usageMetadata?.promptTokenCount || 0, data.usageMetadata?.candidatesTokenCount || 0, true);
+    await handleParseSuccess(raw, data.usageMetadata?.promptTokenCount || 0, data.usageMetadata?.candidatesTokenCount || 0, 'image');
   } catch (e) {
     setImageParseStatus('error', `⚠ ${escHtml(e.message)}`);
   } finally {
@@ -2857,7 +2866,7 @@ async function runParseImageWithChatGpt() {
     if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err?.error?.message || `HTTP ${res.status}`); }
     const data = await res.json();
     const raw = data.choices?.[0]?.message?.content || '';
-    await handleParseSuccess(raw, data.usage?.prompt_tokens || 0, data.usage?.completion_tokens || 0, true);
+    await handleParseSuccess(raw, data.usage?.prompt_tokens || 0, data.usage?.completion_tokens || 0, 'image');
   } catch (e) {
     setImageParseStatus('error', `⚠ ${escHtml(e.message)}`);
   } finally {
@@ -2922,15 +2931,23 @@ For YouTube videos: read the video description (and transcript if available) car
 For recipe pages: extract from the main content.
 If multiple recipes are found, pick the most prominent one.
 
-Extraction rules:
-- title: recipe name
+Return JSON in EXACTLY this shape:
+{
+  "title": "recipe name",
+  "servings": 2,
+  "ingredients": [{ "name": "...", "amount": 100, "unit": "g" }],
+  "steps": ["step 1", "step 2"]
+}
+
+Rules:
 - servings: integer only (e.g. "serves 2" → 2). null if not found.
 - ingredients[].name: ingredient name in English
 - ingredients[].amount: pure number only. Use null for vague amounts like "to taste"
 - ingredients[].unit: unit (e.g. "g", "ml", "tbsp"). Empty string if none
 - steps: cooking steps in order, in English
 
-IMPORTANT: Output ALL strings in English. Translate from the source language if needed.`;
+Output ONLY the JSON. No explanations, no markdown code fences.
+Output ALL strings in English. Translate from the source language if needed.`;
   }
   // ja
   const titleSection = trimmedTitle
@@ -2944,44 +2961,56 @@ YouTube動画の場合: 動画の概要欄（descriptionとtranscript）を丁�
 レシピサイトの場合: メインコンテンツから抽出してください。
 複数のレシピがあれば、最も主要な1つを選んでください。
 
+以下のJSON構造で正確に返してください:
+{
+  "title": "レシピ名",
+  "servings": 2,
+  "ingredients": [{ "name": "材料名", "amount": 100, "unit": "g" }],
+  "steps": ["手順1", "手順2"]
+}
+
 抽出ルール:
-- title: レシピ名
 - servings: 整数のみ（「2人前」→2）。なければnull
 - ingredients[].name: 材料名を日本語で
 - ingredients[].amount: 純粋な数値のみ。「適量」「少々」は null
 - ingredients[].unit: 単位（個・g・ml・大さじ等）。なければ空文字
 - steps: 作り方を順番通りに、日本語で
 
-重要: すべて日本語で出力。元が他言語でも翻訳すること。`;
+JSONのみを返してください。説明文・マークダウンコードブロックは不要です。
+すべて日本語で出力。元が他言語でも翻訳すること。`;
 }
 
 async function runParseWithUrlContext() {
   // Gemini 専用機能のためプロバイダー確認
   const provider = loadAiProvider();
   if (provider !== 'gemini') {
-    setParseStatus('error', t('parse.url_err_provider'));
+    setUrlStatus('error', t('parse.url_err_provider'));
     return;
   }
   const apiKey = loadApiKey();
   if (!apiKey) {
-    setParseStatus('error', `${t('parse.err_no_gemini_key')} &nbsp;<button onclick="openSettingsModal()" style="padding:3px 8px;border:1px solid currentColor;border-radius:4px;background:none;cursor:pointer;font-size:12px;color:inherit">${t('parse.open_settings')}</button>`);
+    setUrlStatus('error', `${t('parse.err_no_gemini_key')} &nbsp;<button onclick="openSettingsModal()" style="padding:3px 8px;border:1px solid currentColor;border-radius:4px;background:none;cursor:pointer;font-size:12px;color:inherit">${t('parse.open_settings')}</button>`);
     return;
   }
   const url = (document.getElementById('f-url').value || '').trim();
   if (!url) {
-    setParseStatus('error', t('parse.url_err_no_url'));
+    setUrlStatus('error', t('parse.url_err_no_url'));
     return;
   }
   if (!/^https?:\/\//i.test(url)) {
-    setParseStatus('error', t('parse.url_err_invalid'));
+    setUrlStatus('error', t('parse.url_err_invalid'));
     return;
   }
 
   const btn = document.getElementById('url-parse-btn');
   btn.disabled = true;
-  setParseStatus('loading', t('parse.url_loading'));
+  // oEmbed のタイマーが走ってると後から overwrite されるので止めておく
+  clearTimeout(oEmbedTimer);
+  setUrlStatus('loading', t('parse.url_loading'));
   try {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${loadModel()}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    // responseSchema は url_context と同時利用すると API が弾く場合があるので外す。
+    // 代わりにプロンプトで JSON 構造を厳密に指示している。
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2989,20 +3018,30 @@ async function runParseWithUrlContext() {
         contents: [{ parts: [{ text: buildRecipeUrlPrompt(url, document.getElementById('f-title').value) }] }],
         tools: [{ url_context: {} }],
         generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: GEMINI_RECIPE_SCHEMA
+          responseMimeType: 'application/json'
         }
       })
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `HTTP ${res.status}`);
+      const errBody = await res.json().catch(() => ({}));
+      console.error('[url_context] HTTP error', res.status, errBody);
+      throw new Error(errBody?.error?.message || `HTTP ${res.status}`);
     }
     const data = await res.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    await handleParseSuccess(raw, data.usageMetadata?.promptTokenCount || 0, data.usageMetadata?.candidatesTokenCount || 0);
+    console.log('[url_context] response', data);
+    // url_context の応答は parts 構造が複数になることがあるので、防御的に text を探す
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const textPart = parts.find(p => typeof p.text === 'string' && p.text.trim());
+    const raw = textPart ? textPart.text : '';
+    if (!raw) {
+      console.error('[url_context] no text in response', data);
+      throw new Error('AI からの応答にテキストが含まれていません');
+    }
+    await handleParseSuccess(raw, data.usageMetadata?.promptTokenCount || 0, data.usageMetadata?.candidatesTokenCount || 0, 'url');
+    setTimeout(clearUrlStatus, 5000);
   } catch (e) {
-    setParseStatus('error', `⚠ ${escHtml(e.message)}`);
+    console.error('[url_context] error', e);
+    setUrlStatus('error', `⚠ ${escHtml(e.message)}`);
   } finally {
     btn.disabled = false;
   }

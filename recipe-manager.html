@@ -2555,6 +2555,27 @@ ${text}
 重要: title・ingredients[].name・ingredients[].unit・steps はすべて日本語で出力してください。元テキストが他言語でも翻訳すること。`;
 }
 
+// AI の生応答から JSON 部分を抜き出してパース。失敗時は throw。
+function extractJsonFromAiResponse(rawText) {
+  if (!rawText || !rawText.trim()) {
+    throw new Error('AIのレスポンスが空でした');
+  }
+  // 1. コードフェンス除去 + trim
+  let s = rawText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+  // 2. 直接 parse 試行
+  try { return JSON.parse(s); } catch {}
+  // 3. 最初の { と最後の } の間を切り出して再試行（前置き・後置きを除く）
+  const firstBrace = s.indexOf('{');
+  const lastBrace = s.lastIndexOf('}');
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    const candidate = s.slice(firstBrace, lastBrace + 1);
+    try { return JSON.parse(candidate); } catch {}
+  }
+  // 4. それでもダメなら詳細を console に流して例外
+  console.error('[parse] failed to parse AI response as JSON. raw text:', rawText);
+  throw new Error('AIのレスポンスをJSONとして解析できませんでした');
+}
+
 async function handleParseSuccess(data, inputTokens, outputTokens, mode = 'text') {
   // 後方互換: 旧コードが boolean (isImage) を渡している場合も拾う
   if (mode === true) mode = 'image';
@@ -2562,13 +2583,8 @@ async function handleParseSuccess(data, inputTokens, outputTokens, mode = 'text'
 
   const cumulative = addTokenUsage(inputTokens, outputTokens);
   renderTokenUsage();
-  let parsed;
-  try {
-    const jsonStr = data.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
-    parsed = JSON.parse(jsonStr);
-  } catch {
-    throw new Error('AIのレスポンスをJSONとして解析できませんでした');
-  }
+  console.log('[parse] raw AI response text:', data);
+  const parsed = extractJsonFromAiResponse(data);
   await populateFromParsed(parsed);
   const tokenInfo = inputTokens ? `　<span style="color:var(--text-muted);font-size:12px">今回 ${(inputTokens+outputTokens).toLocaleString()} トークン / 累計 ${(cumulative.input+cumulative.output).toLocaleString()}</span>` : '';
   const successMsg = `✓ 解析完了（材料 ${(parsed.ingredients||[]).length}品・手順 ${(parsed.steps||[]).length}工程）${tokenInfo}`;
@@ -3028,10 +3044,13 @@ async function runParseWithUrlContext() {
     }
     const data = await res.json();
     console.log('[url_context] response', data);
-    // url_context の応答は parts 構造が複数になることがあるので、防御的に text を探す
+    // url_context の応答は parts が複数 text に分かれて返ることがあるので全結合する
     const parts = data.candidates?.[0]?.content?.parts || [];
-    const textPart = parts.find(p => typeof p.text === 'string' && p.text.trim());
-    const raw = textPart ? textPart.text : '';
+    const raw = parts
+      .filter(p => typeof p.text === 'string')
+      .map(p => p.text)
+      .join('\n')
+      .trim();
     if (!raw) {
       console.error('[url_context] no text in response', data);
       throw new Error('AI からの応答にテキストが含まれていません');

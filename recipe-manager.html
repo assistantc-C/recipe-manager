@@ -433,37 +433,17 @@
     opacity: 0.5;
   }
 
-  /* ===== PARSE SECTION ===== */
+  /* ===== PARSE SECTION (画像入力セクション) ===== */
   .parse-section {
     border: 1px solid var(--border);
     border-radius: 10px;
+    padding: 14px;
     margin-bottom: 18px;
-    overflow: hidden;
   }
-  .parse-toggle {
-    width: 100%;
-    background: var(--surface2);
-    border: none;
-    padding: 10px 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    text-align: left;
-    gap: 8px;
+  #image-paste-zone:hover {
+    border-color: var(--primary);
+    background: rgba(224, 123, 57, 0.04);
   }
-  .parse-toggle:hover { background: #ede8e0; }
-  .parse-toggle .toggle-icon {
-    font-size: 11px;
-    color: var(--text-muted);
-    transition: transform 0.2s;
-    flex-shrink: 0;
-  }
-  .parse-toggle .toggle-icon.open { transform: rotate(180deg); }
-  .parse-body { padding: 14px; border-top: 1px solid var(--border); }
   .parse-status {
     font-size: 13px;
     display: flex;
@@ -881,11 +861,6 @@
         <div class="field-error" id="error-url"></div>
         <div class="form-hint" data-i18n="form.url_hint">YouTubeやWebサイトのURL（省略可）</div>
         <div class="url-status" id="url-fetch-status"></div>
-        <!-- URL を Gemini に渡して中身を直接読ませる（url_context ツール利用） -->
-        <div id="url-parse-action" style="display:none;margin-top:10px">
-          <button type="button" class="btn btn-primary btn-sm" id="url-parse-btn" onclick="runParseWithUrlContext()" data-i18n="parse.url_run">✨ このURLからレシピを抽出</button>
-          <div class="form-hint" style="margin-top:4px" data-i18n="parse.url_run_hint">URL先のページをAIが読み取って一括入力（Gemini 専用・実験的）。YouTubeや cookpad は失敗することが多いです。失敗時はテキスト・画像から抽出をお試しください</div>
-        </div>
       </div>
       <div class="form-group">
         <label>
@@ -899,38 +874,26 @@
         <div class="field-error" id="error-title"></div>
       </div>
 
-      <!-- ===== AI PARSE SECTION ===== -->
+      <!-- ===== IMAGE-FROM-CLIPBOARD/FILE INPUT ===== -->
       <div class="parse-section">
-        <button class="parse-toggle" type="button" onclick="toggleParseSection()">
-          <span data-i18n="parse.toggle">✨ テキストまたは画像からAIで自動入力</span>
-          <span class="toggle-icon" id="parse-toggle-icon">▼</span>
-        </button>
-        <div class="parse-body" id="parse-body" style="display:none">
-          <div id="parse-yt-btn-wrap" style="display:none;margin-bottom:10px">
-            <a id="parse-yt-link" href="#" target="_blank" rel="noopener" class="btn-yt-desc" data-i18n="parse.yt_open">▶ YouTubeで概要欄を開く</a>
-            <span style="font-size:12px;color:var(--text-muted);margin-left:8px" data-i18n="parse.yt_hint">→ コピーして下に貼り付けてください</span>
-          </div>
-          <textarea id="f-paste-text" data-i18n-placeholder="parse.placeholder" placeholder="YouTubeの概要欄やレシピページのテキストをここに貼り付けてください。レシピ名・材料・作り方を自動で入力します。" style="min-height:120px"></textarea>
+        <div style="font-size:14px;font-weight:500;margin-bottom:8px">
+          <span data-i18n="parse.image_label">📷 スクショ/画像から自動入力</span>
+        </div>
+        <div id="image-paste-zone" tabindex="0"
+             style="border:2px dashed var(--border);border-radius:8px;padding:20px;cursor:pointer;text-align:center;color:var(--text-muted);transition:border-color 0.15s, background 0.15s"
+             onclick="document.getElementById('f-paste-image').click()"
+             data-i18n="parse.image_drop_hint">
+          📋 ここに画像を貼り付け（Ctrl+V）またはタップして選択
+        </div>
+        <input type="file" id="f-paste-image" accept="image/*" style="display:none" onchange="handleImageSelected(event)">
+        <div id="parse-image-preview" style="display:none;margin-top:10px">
+          <img id="parse-image-preview-img" style="max-width:100%;max-height:240px;border-radius:6px;border:1px solid var(--border);display:block">
           <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" id="parse-btn" onclick="runParseWithAI()" data-i18n="parse.run">✨ AIで解析する</button>
-            <div class="parse-status" id="parse-status"></div>
+            <button class="btn btn-primary btn-sm" id="parse-image-btn" type="button" onclick="runParseWithImage()" data-i18n="parse.image_run">📷 この画像から抽出</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="clearImagePreview()" data-i18n="parse.image_clear">キャンセル</button>
+            <span id="parse-image-info" style="font-size:12px;color:var(--text-muted)"></span>
           </div>
-
-          <!-- Image-based parse -->
-          <div class="parse-image-section" style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)">
-            <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px" data-i18n="parse.image_label">📷 または画像から抽出（料理本・スクショ等）</div>
-            <input type="file" id="f-paste-image" accept="image/*" style="display:none" onchange="handleImageSelected(event)">
-            <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('f-paste-image').click()" data-i18n="parse.image_pick">画像を選択 / 撮影</button>
-            <div id="parse-image-preview" style="display:none;margin-top:10px">
-              <img id="parse-image-preview-img" style="max-width:100%;max-height:240px;border-radius:6px;border:1px solid var(--border);display:block">
-              <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap">
-                <button class="btn btn-primary btn-sm" id="parse-image-btn" type="button" onclick="runParseWithImage()" data-i18n="parse.image_run">📷 この画像から抽出</button>
-                <button class="btn btn-ghost btn-sm" type="button" onclick="clearImagePreview()" data-i18n="parse.image_clear">キャンセル</button>
-                <span id="parse-image-info" style="font-size:12px;color:var(--text-muted)"></span>
-              </div>
-              <div class="parse-status" id="parse-image-status" style="margin-top:8px"></div>
-            </div>
-          </div>
+          <div class="parse-status" id="parse-image-status" style="margin-top:8px"></div>
         </div>
       </div>
 
@@ -1204,16 +1167,9 @@ const I18N = {
     'form.source.other': 'その他',
     'form.memo': 'メモ',
     'form.memo_placeholder': 'ポイント・感想・アレンジなど...',
-    'parse.toggle': '✨ テキストまたは画像からAIで自動入力',
     'clipboard.title': 'クリップボードに URL があります',
     'clipboard.use': 'この URL を使う',
     'clipboard.dismiss': '使わない',
-    'parse.url_run': '✨ このURLからレシピを抽出',
-    'parse.url_run_hint': 'URL先のページをAIが読み取って一括入力（Gemini 専用・実験的）。YouTubeや cookpad は失敗することが多いです。失敗時はテキスト・画像から抽出をお試しください',
-    'parse.url_loading': 'URL先のページを読み取り中...',
-    'parse.url_err_provider': '⚠ この機能は Gemini 専用です。設定で Gemini に切り替えてください',
-    'parse.url_err_no_url': '⚠ URL が入力されていません',
-    'parse.url_err_invalid': '⚠ URL は http:// または https:// で始まる必要があります',
     'url.fetching': 'タイトルを取得中...',
     'url.fetched': '✓ タイトルを自動取得しました',
     'url.open_yt': '▶ YouTubeで開く',
@@ -1222,8 +1178,9 @@ const I18N = {
     'url.err_server': '⚠ YouTube 側の一時障害です（HTTP {code}）。少し待って再試行してください',
     'url.err_other': '⚠ タイトル取得失敗（HTTP {code}）',
     'url.err_network': '⚠ ネットワークエラー。接続を確認してください',
-    'parse.image_label': '📷 または画像から抽出（料理本・スクショ等）',
-    'parse.image_pick': '画像を選択 / 撮影',
+    'parse.image_label': '📷 スクショ/画像から自動入力',
+    'parse.image_drop_hint': '📋 ここに画像を貼り付け（Ctrl+V）またはタップして選択',
+    'parse.image_pasted_label': '貼り付けた画像',
     'parse.image_run': '📷 この画像から抽出',
     'parse.image_clear': 'キャンセル',
     'parse.image_loading': '画像を解析中...',
@@ -1235,10 +1192,6 @@ const I18N = {
     'parse.err_no_gemini_key': '⚠ Gemini APIキーが設定されていません',
     'parse.err_no_chatgpt_key': '⚠ ChatGPT APIキーが設定されていません',
     'parse.open_settings': '設定を開く',
-    'parse.yt_open': '▶ YouTubeで概要欄を開く',
-    'parse.yt_hint': '→ コピーして下に貼り付けてください',
-    'parse.placeholder': 'YouTubeの概要欄やレシピページのテキストをここに貼り付けてください。レシピ名・材料・作り方を自動で入力します。',
-    'parse.run': '✨ AIで解析する',
     'section.ingredients': '材料',
     'section.steps': '作り方',
     'action.add_ingredient': '＋ 材料を追加',
@@ -1361,20 +1314,9 @@ const I18N = {
     'form.source.other': 'Other',
     'form.memo': 'Memo',
     'form.memo_placeholder': 'Tips, thoughts, variations...',
-    'parse.toggle': '✨ Auto-fill from text or image with AI',
-    'parse.yt_open': '▶ Open description on YouTube',
-    'parse.yt_hint': '→ Copy and paste it below',
-    'parse.placeholder': 'Paste the YouTube description or recipe page text here. The title, ingredients, and steps will be filled in automatically.',
-    'parse.run': '✨ Parse with AI',
     'clipboard.title': 'Found a URL in your clipboard',
     'clipboard.use': 'Use this URL',
     'clipboard.dismiss': 'Dismiss',
-    'parse.url_run': '✨ Extract recipe from this URL',
-    'parse.url_run_hint': 'AI reads the linked page and fills in everything (Gemini-only, experimental). Often fails for YouTube and cookpad. If it fails, please try text/image extraction',
-    'parse.url_loading': 'Reading the linked page...',
-    'parse.url_err_provider': '⚠ This feature is Gemini-only. Please switch to Gemini in Settings',
-    'parse.url_err_no_url': '⚠ No URL entered',
-    'parse.url_err_invalid': '⚠ URL must start with http:// or https://',
     'url.fetching': 'Fetching title...',
     'url.fetched': '✓ Title auto-fetched',
     'url.open_yt': '▶ Open in YouTube',
@@ -1383,8 +1325,9 @@ const I18N = {
     'url.err_server': '⚠ YouTube temporary issue (HTTP {code}). Please try again in a moment',
     'url.err_other': '⚠ Failed to fetch title (HTTP {code})',
     'url.err_network': '⚠ Network error. Please check your connection',
-    'parse.image_label': '📷 Or extract from an image (cookbook, screenshot, etc.)',
-    'parse.image_pick': 'Pick / take photo',
+    'parse.image_label': '📷 Auto-fill from a screenshot or image',
+    'parse.image_drop_hint': '📋 Paste an image here (Ctrl+V) or tap to select',
+    'parse.image_pasted_label': 'pasted image',
     'parse.image_run': '📷 Extract from this image',
     'parse.image_clear': 'Cancel',
     'parse.image_loading': 'Analyzing image...',
@@ -1871,10 +1814,8 @@ function openAddModal() {
   document.getElementById('step-rows').innerHTML = '';
   document.getElementById('title-autofill-badge').style.display = 'none';
   clearUrlStatus();
-  updateYtDescHint('');
   resetParseSection();
   dismissClipboardBanner();
-  updateUrlParseButtonVisibility();
   addIngredientRow();
   openModal('add-modal');
   // クリップボードに URL があれば検出して取り込み提案
@@ -1899,9 +1840,7 @@ function editRecipe() {
   document.getElementById('title-autofill-badge').style.display = 'none';
   document.getElementById('step-rows').innerHTML = '';
   clearUrlStatus();
-  updateYtDescHint(r.url);
   resetParseSection();
-  updateUrlParseButtonVisibility();
   (r.ingredients || []).forEach(ing => addIngredientRow(ing.name, ing.amount, ing.unit));
   if (!(r.ingredients || []).length) addIngredientRow();
   (r.steps || []).forEach(s => addStepRow(s));
@@ -2361,8 +2300,6 @@ function saveSettings() {
   localStorage.setItem(YT_AUTOFETCH_STORAGE, document.getElementById('s-yt-autofetch').checked);
   showToast(t('toast.settings_saved'));
   closeModal('settings-modal');
-  // プロバイダー切替時、追加モーダルが開いていればURL解析ボタンの表示状態を反映
-  updateUrlParseButtonVisibility();
 }
 
 function switchProviderSection() {
@@ -2390,31 +2327,9 @@ function deleteProviderKey(provider, inputId) {
   showToast(t('toast.api_key_deleted'));
 }
 
-// ===== PARSE SECTION TOGGLE =====
-let parseSectionOpen = false;
-
-function toggleParseSection() {
-  parseSectionOpen = !parseSectionOpen;
-  document.getElementById('parse-body').style.display = parseSectionOpen ? 'block' : 'none';
-  const icon = document.getElementById('parse-toggle-icon');
-  icon.classList.toggle('open', parseSectionOpen);
-}
-
+// 追加モーダルの画像セクションをリセット（モーダル open 時に呼ぶ）
 function resetParseSection() {
-  parseSectionOpen = false;
-  document.getElementById('parse-body').style.display = 'none';
-  document.getElementById('parse-toggle-icon').classList.remove('open');
-  document.getElementById('f-paste-text').value = '';
-  setParseStatus('', '');
   clearImagePreview();
-}
-
-function setParseStatus(type, msg) {
-  const el = document.getElementById('parse-status');
-  el.className = 'parse-status' + (type ? ' ' + type : '');
-  el.innerHTML = type === 'loading'
-    ? `<div class="spinner"></div>${msg}`
-    : msg;
 }
 
 // 画像解析専用ステータス（画像セクション内に表示）
@@ -2506,55 +2421,6 @@ const OPENAI_RECIPE_SCHEMA = {
   additionalProperties: false
 };
 
-function buildRecipePrompt(text, existingTitle) {
-  // 形式は responseSchema で強制されるので、抽出ルールだけ伝える
-  // UI 言語に合わせて出力言語を切替（ja: 日本語、en: 英語）
-  const lang = loadLang();
-  const trimmedTitle = (existingTitle || '').trim();
-
-  if (lang === 'en') {
-    const titleSection = trimmedTitle
-      ? `\nExisting title (already filled by user or auto-fetched): "${trimmedTitle}"\n→ If a clear recipe name appears in the text, use that. Otherwise, translate this existing title to English.\n`
-      : '';
-    return `Extract recipe information from the following text.${titleSection}
-
-Text:
-"""
-${text}
-"""
-
-Extraction rules:
-- title: recipe name. If existing title is provided above, prefer using/translating it unless the text contains a clearer name. Empty string if absolutely nothing.
-- servings: integer only (e.g. "serves 2" → 2, "4人分" → 4). null if not found.
-- ingredients[].name: ingredient name in English.
-- ingredients[].amount: pure number only. Use null for vague amounts like "to taste", "a little", "適量".
-- ingredients[].unit: unit (e.g. "g", "ml", "tbsp", "tsp", "piece"). Empty string if none.
-- steps: cooking steps in order, in English.
-
-IMPORTANT: Output ALL strings (title, ingredient names, units, steps) in English. Translate from the source language if needed.`;
-  }
-  // ja (default)
-  const titleSection = trimmedTitle
-    ? `\n既存タイトル（ユーザー入力 or 自動取得済み）: "${trimmedTitle}"\n→ テキスト内に明確なレシピ名があればそれを優先。なければこの既存タイトルを日本語に翻訳して使う。\n`
-    : '';
-  return `以下のテキストからレシピ情報を抽出してください。${titleSection}
-
-テキスト:
-"""
-${text}
-"""
-
-抽出ルール:
-- title: レシピ名。既存タイトルが提供されている場合、テキストに明確な名前がなければそれを翻訳して使う。何もなければ空文字。
-- servings: 「2人分」「4人前」などから整数のみ抽出。見つからなければ null
-- ingredients[].name: 材料名を日本語で
-- ingredients[].amount: 純粋な数値のみ。「適量」「少々」「お好みで」は null
-- ingredients[].unit: 単位（個・g・ml・大さじ等）。なければ空文字
-- steps: 作り方を順番通りの配列で、日本語で。なければ空配列
-
-重要: title・ingredients[].name・ingredients[].unit・steps はすべて日本語で出力してください。元テキストが他言語でも翻訳すること。`;
-}
-
 // AI の生応答から JSON 部分を抜き出してパース。失敗時は throw。
 function extractJsonFromAiResponse(rawText) {
   if (!rawText || !rawText.trim()) {
@@ -2598,62 +2464,9 @@ async function handleParseSuccess(data, inputTokens, outputTokens, mode = 'text'
   await populateFromParsed(parsed);
   const tokenInfo = inputTokens ? `　<span style="color:var(--text-muted);font-size:12px">今回 ${(inputTokens+outputTokens).toLocaleString()} トークン / 累計 ${(cumulative.input+cumulative.output).toLocaleString()}</span>` : '';
   const successMsg = `✓ 解析完了（材料 ${(parsed.ingredients||[]).length}品・手順 ${(parsed.steps||[]).length}工程）${tokenInfo}`;
-  // mode に応じて適切な status setter へ
-  let setter;
-  if (mode === 'image') setter = setImageParseStatus;
-  else if (mode === 'url') setter = setUrlStatus;
-  else setter = setParseStatus;
-  setter('success', successMsg);
+  // 現状の取り込み経路は画像のみ（テキスト・URL経路は撤去済み・2026-05-12）
+  setImageParseStatus('success', successMsg);
   return parsed;
-}
-
-async function runParseWithAI() {
-  const provider = loadAiProvider();
-  if (provider === 'chatgpt') return runParseWithChatGpt();
-  return runParseWithGemini();
-}
-
-async function runParseWithChatGpt() {
-  const apiKey = loadChatGptKey();
-  if (!apiKey) {
-    setParseStatus('error', '⚠ ChatGPT APIキーが設定されていません &nbsp;<button onclick="openSettingsModal()" style="padding:3px 8px;border:1px solid currentColor;border-radius:4px;background:none;cursor:pointer;font-size:12px;color:inherit">設定を開く</button>');
-    return;
-  }
-  const text = document.getElementById('f-paste-text').value.trim();
-  if (!text) { setParseStatus('error', '⚠ テキストを貼り付けてください'); return; }
-
-  const btn = document.getElementById('parse-btn');
-  btn.disabled = true;
-  setParseStatus('loading', '解析中...');
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: loadChatGptModel(),
-        messages: [{ role: 'user', content: buildRecipePrompt(text, document.getElementById('f-title').value) }],
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'recipe',
-            strict: true,
-            schema: OPENAI_RECIPE_SCHEMA
-          }
-        }
-      })
-    });
-    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err?.error?.message || `HTTP ${res.status}`); }
-    const data = await res.json();
-    const raw = data.choices?.[0]?.message?.content || '';
-    await handleParseSuccess(raw, data.usage?.prompt_tokens || 0, data.usage?.completion_tokens || 0);
-  } catch (e) {
-    setParseStatus('error', `⚠ 解析失敗: ${escHtml(e.message)}`);
-  } finally {
-    btn.disabled = false;
-  }
 }
 
 // ===== IMAGE PARSE (Gemini Vision / OpenAI Vision) =====
@@ -2696,22 +2509,19 @@ function updateChatGptVisionWarning() {
 }
 
 // 画像が選択されたとき
-function handleImageSelected(event) {
-  const file = event.target.files && event.target.files[0];
-  if (!file) return;
-
-  if (!/^image\//.test(file.type)) {
+// 共通画像処理：File / Blob を受け取り、検証→base64化→プレビュー表示
+// labelOverride: クリップボード貼り付け等で File.name が無い場合の表示名
+function processImageBlob(blob, labelOverride) {
+  if (!blob) return false;
+  if (!/^image\//.test(blob.type)) {
     setImageParseStatus('error', t('parse.image_err_type'));
-    event.target.value = '';
-    return;
+    return false;
   }
-  if (file.size > IMAGE_MAX_BYTES) {
-    const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+  if (blob.size > IMAGE_MAX_BYTES) {
+    const sizeMb = (blob.size / 1024 / 1024).toFixed(1);
     setImageParseStatus('error', t('parse.image_err_size').replace('{size}', sizeMb));
-    event.target.value = '';
-    return;
+    return false;
   }
-
   const reader = new FileReader();
   reader.onload = (e) => {
     const dataUrl = e.target.result;
@@ -2720,22 +2530,48 @@ function handleImageSelected(event) {
     _pickedImage = {
       dataUrl,
       base64,
-      mimeType: file.type || 'image/jpeg',
-      sizeBytes: file.size
+      mimeType: blob.type || 'image/png',
+      sizeBytes: blob.size
     };
     document.getElementById('parse-image-preview-img').src = dataUrl;
     document.getElementById('parse-image-preview').style.display = 'block';
     const info = document.getElementById('parse-image-info');
     if (info) {
-      const sizeKb = Math.round(file.size / 1024);
-      info.textContent = `${file.name} (${sizeKb} KB)`;
+      const sizeKb = Math.round(blob.size / 1024);
+      const displayName = labelOverride || blob.name || t('parse.image_pasted_label');
+      info.textContent = `${displayName} (${sizeKb} KB)`;
     }
     setImageParseStatus('', '');
   };
   reader.onerror = () => {
     setImageParseStatus('error', t('parse.image_err_read'));
   };
-  reader.readAsDataURL(file);
+  reader.readAsDataURL(blob);
+  return true;
+}
+
+function handleImageSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const ok = processImageBlob(file);
+  if (!ok) event.target.value = '';
+}
+
+// モーダル内での paste（Ctrl+V）に応答：clipboardData に画像があれば取り込む
+function handleAddModalPaste(e) {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  // テキスト入力中の URL ペースト等は通常通り通したい → 画像 item があるときだけ介入
+  for (const item of items) {
+    if (item.type && item.type.startsWith('image/')) {
+      const blob = item.getAsFile();
+      if (blob) {
+        e.preventDefault();
+        processImageBlob(blob, t('parse.image_pasted_label'));
+        return;
+      }
+    }
+  }
 }
 
 function clearImagePreview() {
@@ -2900,226 +2736,7 @@ async function runParseImageWithChatGpt() {
   }
 }
 
-async function runParseWithGemini() {
-  const apiKey = loadApiKey();
-  if (!apiKey) {
-    setParseStatus('error', '⚠ Gemini APIキーが設定されていません &nbsp;<button onclick="openSettingsModal()" style="padding:3px 8px;border:1px solid currentColor;border-radius:4px;background:none;cursor:pointer;font-size:12px;color:inherit">設定を開く</button>');
-    return;
-  }
-  const text = document.getElementById('f-paste-text').value.trim();
-  if (!text) { setParseStatus('error', '⚠ テキストを貼り付けてください'); return; }
 
-  const btn = document.getElementById('parse-btn');
-  btn.disabled = true;
-  setParseStatus('loading', '解析中...');
-  try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${loadModel()}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: buildRecipePrompt(text, document.getElementById('f-title').value) }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: GEMINI_RECIPE_SCHEMA
-        }
-      })
-    });
-    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err?.error?.message || `HTTP ${res.status}`); }
-    const data = await res.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    await handleParseSuccess(raw, data.usageMetadata?.promptTokenCount || 0, data.usageMetadata?.candidatesTokenCount || 0);
-  } catch (e) {
-    setParseStatus('error', `⚠ 解析失敗: ${escHtml(e.message)}`);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-// ===== URL CONTEXT PARSE (Gemini のみ) =====
-// URL を渡すと AI 側がページを読み取って中身を抽出する（url_context ツール）。
-// YouTube 動画なら概要欄から、レシピサイトなら本文からレシピ情報を抽出する。
-// 「URL貼る → ボタン1つ → 全部入力」の1アクション化が目的。
-
-function buildRecipeUrlPrompt(url, existingTitle) {
-  const lang = loadLang();
-  const trimmedTitle = (existingTitle || '').trim();
-
-  if (lang === 'en') {
-    const titleSection = trimmedTitle
-      ? `\nExisting title: "${trimmedTitle}"\n→ Use this title if the URL doesn't contain a clearer recipe name.\n`
-      : '';
-    return `Read the page at the URL below and extract recipe information.
-
-URL: ${url}
-${titleSection}
-For YouTube videos: read the video description (and transcript if available) carefully — recipes are usually listed there.
-For recipe pages: extract from the main content.
-If multiple recipes are found, pick the most prominent one.
-
-[IMPORTANT] Do NOT copy the source text verbatim. Paraphrase and summarize in your own words:
-- Keep the bullet-point structure of steps, but rewrite each step concisely in your own phrasing
-- Normalize ingredient names to standard forms
-- Strip out original styling (emojis, decorative intros) — use plain language
-
-Return JSON in EXACTLY this shape:
-{
-  "title": "recipe name",
-  "servings": 2,
-  "ingredients": [{ "name": "...", "amount": 100, "unit": "g" }],
-  "steps": ["step 1", "step 2"]
-}
-
-Rules:
-- servings: integer only (e.g. "serves 2" → 2). null if not found.
-- ingredients[].name: ingredient name in English
-- ingredients[].amount: pure number only. Use null for vague amounts like "to taste"
-- ingredients[].unit: unit (e.g. "g", "ml", "tbsp"). Empty string if none
-- steps: cooking steps in order, in English
-
-Output ONLY the JSON. No explanations, no markdown code fences.
-Output ALL strings in English. Translate from the source language if needed.`;
-  }
-  // ja
-  const titleSection = trimmedTitle
-    ? `\n既存タイトル: "${trimmedTitle}"\n→ URL からより明確なレシピ名が取れなければこのタイトルを使う。\n`
-    : '';
-  return `以下のURLのページを読んでレシピ情報を抽出してください。
-
-URL: ${url}
-${titleSection}
-YouTube動画の場合: 動画の概要欄（descriptionとtranscript）を丁寧に読んでください。レシピは概要欄に書かれていることが多いです。
-レシピサイトの場合: メインコンテンツから抽出してください。
-複数のレシピがあれば、最も主要な1つを選んでください。
-
-【重要】出力は元の文章を逐語コピーせず、ご自身の言葉で要約・整理してください。
-- 手順は箇条書きの構造を保ちつつ、文章は自分の表現で簡潔に書き直す
-- 材料名は標準的な呼び方に正規化する（例：原文「タマネギ」→「玉ねぎ」）
-- 元のスタイル（絵文字・装飾的な前置きなど）は除いてシンプルな日本語にする
-
-以下のJSON構造で正確に返してください:
-{
-  "title": "レシピ名",
-  "servings": 2,
-  "ingredients": [{ "name": "材料名", "amount": 100, "unit": "g" }],
-  "steps": ["手順1", "手順2"]
-}
-
-抽出ルール:
-- servings: 整数のみ（「2人前」→2）。なければnull
-- ingredients[].name: 材料名を日本語で
-- ingredients[].amount: 純粋な数値のみ。「適量」「少々」は null
-- ingredients[].unit: 単位（個・g・ml・大さじ等）。なければ空文字
-- steps: 作り方を順番通りに、日本語で
-
-JSONのみを返してください。説明文・マークダウンコードブロックは不要です。
-すべて日本語で出力。元が他言語でも翻訳すること。`;
-}
-
-// URL パース失敗時に毎回出すフォールバック案内（HTML）
-const URL_PARSE_FALLBACK_HINT = '<br>→ 代わりに <strong>AI Parse セクションを開いて、テキスト貼り付け or 画像から抽出</strong>もお試しください';
-
-async function runParseWithUrlContext() {
-  // Gemini 専用機能のためプロバイダー確認
-  const provider = loadAiProvider();
-  if (provider !== 'gemini') {
-    setUrlStatus('error', t('parse.url_err_provider'));
-    return;
-  }
-  const apiKey = loadApiKey();
-  if (!apiKey) {
-    setUrlStatus('error', `${t('parse.err_no_gemini_key')} &nbsp;<button onclick="openSettingsModal()" style="padding:3px 8px;border:1px solid currentColor;border-radius:4px;background:none;cursor:pointer;font-size:12px;color:inherit">${t('parse.open_settings')}</button>`);
-    return;
-  }
-  const url = (document.getElementById('f-url').value || '').trim();
-  if (!url) {
-    setUrlStatus('error', t('parse.url_err_no_url'));
-    return;
-  }
-  if (!/^https?:\/\//i.test(url)) {
-    setUrlStatus('error', t('parse.url_err_invalid'));
-    return;
-  }
-
-  const btn = document.getElementById('url-parse-btn');
-  btn.disabled = true;
-  // oEmbed のタイマーが走ってると後から overwrite されるので止めておく
-  clearTimeout(oEmbedTimer);
-  setUrlStatus('loading', t('parse.url_loading'));
-  try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${loadModel()}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    // 重要: url_context ツールは responseMimeType / responseSchema と併用不可
-    // （API が "Tool use with a response mime type ... is unsupported" を返す）
-    // 代わりにプロンプトで JSON 構造を厳密に指示している。
-    // ```json``` ラッパーが付いて返ってきても handleParseSuccess で除去される。
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: buildRecipeUrlPrompt(url, document.getElementById('f-title').value) }] }],
-        tools: [{ url_context: {} }]
-      })
-    });
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      console.error('[url_context] HTTP error', res.status, errBody);
-      throw new Error(errBody?.error?.message || `HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    console.log('[url_context] response', data);
-    const candidate = data.candidates?.[0];
-    // url_context の応答は parts が複数 text に分かれて返ることがあるので全結合する
-    const parts = candidate?.content?.parts || [];
-    const raw = parts
-      .filter(p => typeof p.text === 'string')
-      .map(p => p.text)
-      .join('\n')
-      .trim();
-    if (!raw) {
-      const finishReason = candidate?.finishReason || '不明';
-      const urlMeta = candidate?.urlContextMetadata || candidate?.url_context_metadata;
-      console.error('[url_context] no text. finishReason:', finishReason, ' candidate:', candidate, ' urlContextMetadata:', urlMeta);
-      // RECITATION / SAFETY 系は専用メッセージ（throw せず return、finally で btn 戻す）
-      if (finishReason === 'RECITATION' || finishReason === 'SAFETY') {
-        const reasonLabel = finishReason === 'RECITATION'
-          ? '元ページの内容に近すぎる応答が AI 側でブロックされました（特に YouTube 動画で起こりやすい）'
-          : 'AI の安全性フィルタで応答がブロックされました';
-        setUrlStatus('error', `⚠ ${reasonLabel}${URL_PARSE_FALLBACK_HINT}`);
-        return;
-      }
-      let detail = `（finishReason: ${finishReason}）`;
-      if (finishReason === 'MAX_TOKENS') {
-        detail = ' — 応答が長すぎて途中で切れました';
-      } else if (urlMeta && Array.isArray(urlMeta.urlMetadata)) {
-        const failed = urlMeta.urlMetadata.filter(u =>
-          u.urlRetrievalStatus && u.urlRetrievalStatus !== 'URL_RETRIEVAL_STATUS_SUCCESS'
-        );
-        if (failed.length) {
-          const statuses = failed.map(u => u.urlRetrievalStatus).join(', ');
-          detail = ` — URL の取得に失敗しました（${statuses}）`;
-        }
-      }
-      throw new Error(`AI から応答テキストが返りませんでした${detail}`);
-    }
-    await handleParseSuccess(raw, data.usageMetadata?.promptTokenCount || 0, data.usageMetadata?.candidatesTokenCount || 0, 'url');
-    setTimeout(clearUrlStatus, 5000);
-  } catch (e) {
-    console.error('[url_context] error', e);
-    setUrlStatus('error', `⚠ ${escHtml(e.message)}${URL_PARSE_FALLBACK_HINT}`);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-// URL 解析ボタンの表示制御：URL が入っていて Gemini プロバイダーの時だけ表示
-function updateUrlParseButtonVisibility() {
-  const wrap = document.getElementById('url-parse-action');
-  if (!wrap) return;
-  const url = (document.getElementById('f-url').value || '').trim();
-  const provider = loadAiProvider();
-  const visible = /^https?:\/\//i.test(url) && provider === 'gemini';
-  wrap.style.display = visible ? 'block' : 'none';
-}
 
 // ===== AI 翻訳ヘルパー（タイトル等の単発翻訳用） =====
 const _translateCache = new Map();
@@ -3320,18 +2937,6 @@ function clearUrlStatus() {
   el.innerHTML = '';
 }
 
-function updateYtDescHint(url) {
-  const wrap = document.getElementById('parse-yt-btn-wrap');
-  const link = document.getElementById('parse-yt-link');
-  const safe = safeUrl(url);
-  if (isYouTubeUrl(url) && safe !== '#') {
-    link.href = safe;
-    wrap.style.display = 'block';
-  } else {
-    wrap.style.display = 'none';
-  }
-}
-
 async function fetchYouTubeTitle(url) {
   const normalized = normalizeYouTubeUrl(url);
   const oEmbedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(normalized)}&format=json`;
@@ -3351,8 +2956,6 @@ document.getElementById('f-url').addEventListener('input', function() {
   const url = this.value.trim();
   const detected = detectSource(url);
   document.getElementById('f-source').value = detected;
-  updateYtDescHint(url);
-  updateUrlParseButtonVisibility();
 
   clearTimeout(oEmbedTimer);
   clearUrlStatus();
@@ -3418,6 +3021,9 @@ document.addEventListener('keydown', e => {
   applyI18n();
   renderList();
   checkBackupBanner();
+  // 追加モーダル内で画像 paste（Ctrl+V 等）を受け取れるよう登録
+  const addModal = document.getElementById('add-modal');
+  if (addModal) addModal.addEventListener('paste', handleAddModalPaste);
   // 起動形態に応じて分岐:
   //  1. 共有から起動 → 専用処理（モーダルを開いて事前入力）
   //  2. ホーム画面ショートカットから起動 → action に応じた処理

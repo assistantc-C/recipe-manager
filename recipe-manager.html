@@ -3044,16 +3044,33 @@ async function runParseWithUrlContext() {
     }
     const data = await res.json();
     console.log('[url_context] response', data);
+    const candidate = data.candidates?.[0];
     // url_context の応答は parts が複数 text に分かれて返ることがあるので全結合する
-    const parts = data.candidates?.[0]?.content?.parts || [];
+    const parts = candidate?.content?.parts || [];
     const raw = parts
       .filter(p => typeof p.text === 'string')
       .map(p => p.text)
       .join('\n')
       .trim();
     if (!raw) {
-      console.error('[url_context] no text in response', data);
-      throw new Error('AI からの応答にテキストが含まれていません');
+      const finishReason = candidate?.finishReason || '不明';
+      const urlMeta = candidate?.urlContextMetadata || candidate?.url_context_metadata;
+      console.error('[url_context] no text. finishReason:', finishReason, ' candidate:', candidate, ' urlContextMetadata:', urlMeta);
+      let detail = `（finishReason: ${finishReason}）`;
+      if (finishReason === 'SAFETY' || finishReason === 'RECITATION') {
+        detail = ` — AIがコンテンツを制限しました（${finishReason}）`;
+      } else if (finishReason === 'MAX_TOKENS') {
+        detail = ' — 応答が長すぎて途中で切れました';
+      } else if (urlMeta && Array.isArray(urlMeta.urlMetadata)) {
+        const failed = urlMeta.urlMetadata.filter(u =>
+          u.urlRetrievalStatus && u.urlRetrievalStatus !== 'URL_RETRIEVAL_STATUS_SUCCESS'
+        );
+        if (failed.length) {
+          const statuses = failed.map(u => u.urlRetrievalStatus).join(', ');
+          detail = ` — URL の取得に失敗しました（${statuses}）`;
+        }
+      }
+      throw new Error(`AI から応答テキストが返りませんでした${detail}`);
     }
     await handleParseSuccess(raw, data.usageMetadata?.promptTokenCount || 0, data.usageMetadata?.candidatesTokenCount || 0, 'url');
     setTimeout(clearUrlStatus, 5000);

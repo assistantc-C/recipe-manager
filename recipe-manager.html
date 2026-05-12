@@ -884,7 +884,7 @@
         <!-- URL を Gemini に渡して中身を直接読ませる（url_context ツール利用） -->
         <div id="url-parse-action" style="display:none;margin-top:10px">
           <button type="button" class="btn btn-primary btn-sm" id="url-parse-btn" onclick="runParseWithUrlContext()" data-i18n="parse.url_run">✨ このURLからレシピを抽出</button>
-          <div class="form-hint" style="margin-top:4px" data-i18n="parse.url_run_hint">URL先のページをAIが読み取って、タイトル・材料・手順を一括入力します（Gemini 専用 / YouTube は失敗する場合あり）</div>
+          <div class="form-hint" style="margin-top:4px" data-i18n="parse.url_run_hint">URL先のページをAIが読み取って一括入力（Gemini 専用・実験的）。YouTubeや cookpad は失敗することが多いです。失敗時はテキスト・画像から抽出をお試しください</div>
         </div>
       </div>
       <div class="form-group">
@@ -1209,7 +1209,7 @@ const I18N = {
     'clipboard.use': 'この URL を使う',
     'clipboard.dismiss': '使わない',
     'parse.url_run': '✨ このURLからレシピを抽出',
-    'parse.url_run_hint': 'URL先のページをAIが読み取って、タイトル・材料・手順を一括入力します（Gemini 専用 / YouTube は失敗する場合あり）',
+    'parse.url_run_hint': 'URL先のページをAIが読み取って一括入力（Gemini 専用・実験的）。YouTubeや cookpad は失敗することが多いです。失敗時はテキスト・画像から抽出をお試しください',
     'parse.url_loading': 'URL先のページを読み取り中...',
     'parse.url_err_provider': '⚠ この機能は Gemini 専用です。設定で Gemini に切り替えてください',
     'parse.url_err_no_url': '⚠ URL が入力されていません',
@@ -1370,7 +1370,7 @@ const I18N = {
     'clipboard.use': 'Use this URL',
     'clipboard.dismiss': 'Dismiss',
     'parse.url_run': '✨ Extract recipe from this URL',
-    'parse.url_run_hint': 'AI reads the linked page and fills in title, ingredients, and steps (Gemini only / may fail for YouTube)',
+    'parse.url_run_hint': 'AI reads the linked page and fills in everything (Gemini-only, experimental). Often fails for YouTube and cookpad. If it fails, please try text/image extraction',
     'parse.url_loading': 'Reading the linked page...',
     'parse.url_err_provider': '⚠ This feature is Gemini-only. Please switch to Gemini in Settings',
     'parse.url_err_no_url': '⚠ No URL entered',
@@ -2585,6 +2585,16 @@ async function handleParseSuccess(data, inputTokens, outputTokens, mode = 'text'
   renderTokenUsage();
   console.log('[parse] raw AI response text:', data);
   const parsed = extractJsonFromAiResponse(data);
+
+  // 空 JSON 検出: title も ingredients も steps も空なら抽出失敗とみなす
+  // （url_context が cookpad などのアンチボットページに当たると {title:null, ingredients:[], steps:[]} が返ることがある）
+  const hasIngredients = Array.isArray(parsed.ingredients) && parsed.ingredients.length > 0;
+  const hasSteps       = Array.isArray(parsed.steps)       && parsed.steps.length > 0;
+  const hasTitle       = !!(parsed.title && String(parsed.title).trim());
+  if (!hasIngredients && !hasSteps && !hasTitle) {
+    console.error('[parse] empty extraction', parsed);
+    throw new Error('レシピ情報を抽出できませんでした（ページの内容を取得できなかった可能性があります）');
+  }
   await populateFromParsed(parsed);
   const tokenInfo = inputTokens ? `　<span style="color:var(--text-muted);font-size:12px">今回 ${(inputTokens+outputTokens).toLocaleString()} トークン / 累計 ${(cumulative.input+cumulative.output).toLocaleString()}</span>` : '';
   const successMsg = `✓ 解析完了（材料 ${(parsed.ingredients||[]).length}品・手順 ${(parsed.steps||[]).length}工程）${tokenInfo}`;
@@ -3006,6 +3016,9 @@ JSONのみを返してください。説明文・マークダウンコードブ�
 すべて日本語で出力。元が他言語でも翻訳すること。`;
 }
 
+// URL パース失敗時に毎回出すフォールバック案内（HTML）
+const URL_PARSE_FALLBACK_HINT = '<br>→ 代わりに <strong>AI Parse セクションを開いて、テキスト貼り付け or 画像から抽出</strong>もお試しください';
+
 async function runParseWithUrlContext() {
   // Gemini 専用機能のためプロバイダー確認
   const provider = loadAiProvider();
@@ -3066,15 +3079,12 @@ async function runParseWithUrlContext() {
       const finishReason = candidate?.finishReason || '不明';
       const urlMeta = candidate?.urlContextMetadata || candidate?.url_context_metadata;
       console.error('[url_context] no text. finishReason:', finishReason, ' candidate:', candidate, ' urlContextMetadata:', urlMeta);
-      // RECITATION / SAFETY 系はテキスト/画像経由のフォールバック誘導付きで表示
+      // RECITATION / SAFETY 系は専用メッセージ（throw せず return、finally で btn 戻す）
       if (finishReason === 'RECITATION' || finishReason === 'SAFETY') {
         const reasonLabel = finishReason === 'RECITATION'
           ? '元ページの内容に近すぎる応答が AI 側でブロックされました（特に YouTube 動画で起こりやすい）'
           : 'AI の安全性フィルタで応答がブロックされました';
-        const guidance = '<br>→ 代わりに <strong>AI Parse セクションを開いて、テキスト貼り付け or 画像から抽出</strong>をお試しください';
-        // setUrlStatus 経由なので HTML が使える
-        setUrlStatus('error', `⚠ ${reasonLabel}${guidance}`);
-        // throw はせず即 return（btn は finally で enabled に戻る）
+        setUrlStatus('error', `⚠ ${reasonLabel}${URL_PARSE_FALLBACK_HINT}`);
         return;
       }
       let detail = `（finishReason: ${finishReason}）`;
@@ -3095,7 +3105,7 @@ async function runParseWithUrlContext() {
     setTimeout(clearUrlStatus, 5000);
   } catch (e) {
     console.error('[url_context] error', e);
-    setUrlStatus('error', `⚠ ${escHtml(e.message)}`);
+    setUrlStatus('error', `⚠ ${escHtml(e.message)}${URL_PARSE_FALLBACK_HINT}`);
   } finally {
     btn.disabled = false;
   }

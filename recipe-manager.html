@@ -444,6 +444,13 @@
     border-color: var(--primary);
     background: rgba(224, 123, 57, 0.04);
   }
+  /* 入力デバイスでヒントを切り替え（PC = マウス/トラックパッド、モバイル = タッチ） */
+  .pc-only { display: inline; }
+  .mobile-only { display: none; }
+  @media (pointer: coarse) {
+    .pc-only { display: none; }
+    .mobile-only { display: inline; }
+  }
   .parse-status {
     font-size: 13px;
     display: flex;
@@ -879,11 +886,24 @@
         <div style="font-size:14px;font-weight:500;margin-bottom:8px">
           <span data-i18n="parse.image_label">📷 スクショ/画像から自動入力</span>
         </div>
+
+        <!-- Clipboard Image Detection Banner -->
+        <div id="clipboard-image-banner" style="display:none;align-items:flex-start;gap:10px;padding:12px;background:linear-gradient(to right, rgba(224,123,57,0.10), rgba(224,123,57,0.03));border:1px solid rgba(224,123,57,0.35);border-radius:8px;margin-bottom:10px">
+          <img id="clipboard-image-banner-thumb" alt="" style="max-width:80px;max-height:80px;border-radius:6px;flex-shrink:0;object-fit:cover;background:#fff">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;color:var(--text);margin-bottom:8px;font-weight:500" data-i18n="clipboard.image_title">📋 クリップボードに画像があります</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn btn-primary btn-sm" onclick="useClipboardImage()" data-i18n="clipboard.image_use">この画像を使う</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="dismissClipboardImageBanner()" data-i18n="clipboard.dismiss">使わない</button>
+            </div>
+          </div>
+        </div>
+
         <div id="image-paste-zone" tabindex="0"
              style="border:2px dashed var(--border);border-radius:8px;padding:20px;cursor:pointer;text-align:center;color:var(--text-muted);transition:border-color 0.15s, background 0.15s"
-             onclick="document.getElementById('f-paste-image').click()"
-             data-i18n="parse.image_drop_hint">
-          📋 ここに画像を貼り付け（Ctrl+V）またはタップして選択
+             onclick="document.getElementById('f-paste-image').click()">
+          <span class="pc-only" data-i18n="parse.image_drop_hint_pc">📋 画像をここに貼り付け（Ctrl+V）またはクリックして選択</span>
+          <span class="mobile-only" data-i18n="parse.image_drop_hint_mobile">📷 タップして画像を選択</span>
         </div>
         <input type="file" id="f-paste-image" accept="image/*" style="display:none" onchange="handleImageSelected(event)">
         <div id="parse-image-preview" style="display:none;margin-top:10px">
@@ -1086,9 +1106,9 @@
         <label data-i18n="settings.privacy_title">外部サービスとの通信について</label>
         <div class="form-hint" style="margin-top:8px;line-height:1.7" data-i18n="settings.privacy_body">
           このアプリは以下の外部サービスにリクエストを送信することがあります。<br>
-          ・<strong>Google Gemini API</strong>：AIによるレシピ解析時（設定したAPIキーを使用）<br>
-          ・<strong>YouTube oEmbed API</strong>：YouTubeのURLを入力した際のタイトル自動取得時<br>
-          いずれもユーザーの操作時のみ通信が発生します。レシピデータはこのブラウザのローカルストレージにのみ保存され、外部サーバーへ送信されることはありません。
+          ・<strong>Google Gemini API / OpenAI ChatGPT API</strong>：画像からレシピを抽出する時（設定したAPIキーを使用・<strong>画像が送信されます</strong>）<br>
+          ・<strong>YouTube oEmbed API</strong>：YouTubeのURLからタイトルを取得する時（任意・設定で無効化可）<br>
+          いずれもユーザーの操作時のみ通信が発生します。レシピデータはこのブラウザのローカルストレージ／IndexedDBにのみ保存され、外部サーバーへ送信されることはありません。
         </div>
       </div>
     </div>
@@ -1106,7 +1126,7 @@
       <h2 data-i18n="welcome.title">🍳 レシピ管理へようこそ</h2>
     </div>
     <div class="modal-body">
-      <p data-i18n="welcome.intro" style="margin-bottom:16px;line-height:1.7">テキストやURLを貼るだけでAIがレシピを自動抽出。データはすべてあなたのブラウザ内に保存されます。</p>
+      <p data-i18n="welcome.intro" style="margin-bottom:16px;line-height:1.7">スクショや画像からレシピを自動入力できるアプリ。データはすべてあなたのブラウザ内に保存されます。</p>
       <ul style="list-style:none;padding:0;margin-bottom:20px;display:flex;flex-direction:column;gap:6px;font-size:14px">
         <li data-i18n="welcome.feat1">✅ ローカル完結（外部サーバーへの送信なし）</li>
         <li data-i18n="welcome.feat2">✅ PWA対応（ホーム画面に追加できる）</li>
@@ -1114,8 +1134,8 @@
         <li data-i18n="welcome.feat4">✅ JSONでエクスポート・バックアップ可</li>
       </ul>
       <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;line-height:1.7">
-        <strong data-i18n="welcome.ai_title">🤖 AI自動解析を使うには</strong>
-        <p data-i18n="welcome.ai_body" style="margin-top:6px;font-size:13px;color:var(--text-muted)">Google Gemini（無料枠あり）または ChatGPT の APIキーを設定すると、URLを貼るだけでタイトル・材料・手順を自動抽出できます。APIキーなしでも手動でレシピを登録できます。</p>
+        <strong data-i18n="welcome.ai_title">🤖 画像から自動入力を使うには</strong>
+        <p data-i18n="welcome.ai_body" style="margin-top:6px;font-size:13px;color:var(--text-muted)">Google Gemini（無料枠あり）または ChatGPT の APIキーを設定すると、レシピ動画/サイトのスクショからタイトル・材料・手順を自動抽出できます。APIキーなしでも手動でレシピを登録できます。</p>
       </div>
     </div>
     <div class="modal-footer" style="flex-direction:column;gap:8px">
@@ -1169,6 +1189,8 @@ const I18N = {
     'form.memo_placeholder': 'ポイント・感想・アレンジなど...',
     'clipboard.title': 'クリップボードに URL があります',
     'clipboard.use': 'この URL を使う',
+    'clipboard.image_title': '📋 クリップボードに画像があります',
+    'clipboard.image_use': 'この画像を使う',
     'clipboard.dismiss': '使わない',
     'url.fetching': 'タイトルを取得中...',
     'url.fetched': '✓ タイトルを自動取得しました',
@@ -1179,7 +1201,8 @@ const I18N = {
     'url.err_other': '⚠ タイトル取得失敗（HTTP {code}）',
     'url.err_network': '⚠ ネットワークエラー。接続を確認してください',
     'parse.image_label': '📷 スクショ/画像から自動入力',
-    'parse.image_drop_hint': '📋 ここに画像を貼り付け（Ctrl+V）またはタップして選択',
+    'parse.image_drop_hint_pc': '📋 画像をここに貼り付け（Ctrl+V）またはクリックして選択',
+    'parse.image_drop_hint_mobile': '📷 タップして画像を選択',
     'parse.image_pasted_label': '貼り付けた画像',
     'parse.image_run': '📷 この画像から抽出',
     'parse.image_clear': 'キャンセル',
@@ -1240,17 +1263,17 @@ const I18N = {
     'settings.token_hint': 'Gemini無料枠の目安: 入力100万トークン/日、出力100万トークン/日（変更される場合があります）',
     'settings.reset': 'リセット',
     'settings.privacy_title': '外部サービスとの通信について',
-    'settings.privacy_body': 'このアプリは以下の外部サービスにリクエストを送信することがあります。<br>・<strong>Google Gemini API</strong>：AIによるレシピ解析時（設定したAPIキーを使用）<br>・<strong>YouTube oEmbed API</strong>：YouTubeのURLを入力した際のタイトル自動取得時<br>いずれもユーザーの操作時のみ通信が発生します。レシピデータはこのブラウザのローカルストレージにのみ保存され、外部サーバーへ送信されることはありません。',
+    'settings.privacy_body': 'このアプリは以下の外部サービスにリクエストを送信することがあります。<br>・<strong>Google Gemini API / OpenAI ChatGPT API</strong>：画像からレシピを抽出する時（設定したAPIキーを使用・<strong>画像が送信されます</strong>）<br>・<strong>YouTube oEmbed API</strong>：YouTubeのURLからタイトルを取得する時（任意・設定で無効化可）<br>いずれもユーザーの操作時のみ通信が発生します。レシピデータはこのブラウザのローカルストレージ／IndexedDBにのみ保存され、外部サーバーへ送信されることはありません。',
 
     // === Welcome Modal ===
     'welcome.title': '🍳 レシピ管理へようこそ',
-    'welcome.intro': 'テキストやURLを貼るだけでAIがレシピを自動抽出。データはすべてあなたのブラウザ内に保存されます。',
-    'welcome.feat1': '✅ ローカル完結（外部サーバーへの送信なし）',
+    'welcome.intro': 'スクショや画像からレシピを自動入力できるアプリ。データはすべてあなたのブラウザ内に保存されます。',
+    'welcome.feat1': '✅ ローカル完結（レシピデータは外部送信なし）',
     'welcome.feat2': '✅ PWA対応（ホーム画面に追加できる）',
     'welcome.feat3': '✅ 日本語 / English 切替対応',
     'welcome.feat4': '✅ JSONでエクスポート・バックアップ可',
-    'welcome.ai_title': '🤖 AI自動解析を使うには',
-    'welcome.ai_body': 'Google Gemini（無料枠あり）または ChatGPT の APIキーを設定すると、URLを貼るだけでタイトル・材料・手順を自動抽出できます。APIキーなしでも手動でレシピを登録できます。',
+    'welcome.ai_title': '🤖 画像から自動入力を使うには',
+    'welcome.ai_body': 'Google Gemini（無料枠あり）または ChatGPT の APIキーを設定すると、レシピ動画/サイトのスクショからタイトル・材料・手順を自動抽出できます。APIキーなしでも手動でレシピを登録できます。',
     'welcome.btn_setup': '⚙ AIキーを設定して始める',
     'welcome.btn_skip': 'まずは手動で始める →',
 
@@ -1316,6 +1339,8 @@ const I18N = {
     'form.memo_placeholder': 'Tips, thoughts, variations...',
     'clipboard.title': 'Found a URL in your clipboard',
     'clipboard.use': 'Use this URL',
+    'clipboard.image_title': '📋 Found an image in your clipboard',
+    'clipboard.image_use': 'Use this image',
     'clipboard.dismiss': 'Dismiss',
     'url.fetching': 'Fetching title...',
     'url.fetched': '✓ Title auto-fetched',
@@ -1326,7 +1351,8 @@ const I18N = {
     'url.err_other': '⚠ Failed to fetch title (HTTP {code})',
     'url.err_network': '⚠ Network error. Please check your connection',
     'parse.image_label': '📷 Auto-fill from a screenshot or image',
-    'parse.image_drop_hint': '📋 Paste an image here (Ctrl+V) or tap to select',
+    'parse.image_drop_hint_pc': '📋 Paste an image here (Ctrl+V) or click to select',
+    'parse.image_drop_hint_mobile': '📷 Tap to select an image',
     'parse.image_pasted_label': 'pasted image',
     'parse.image_run': '📷 Extract from this image',
     'parse.image_clear': 'Cancel',
@@ -1387,17 +1413,17 @@ const I18N = {
     'settings.token_hint': 'Gemini free tier estimate: 1M input tokens/day, 1M output tokens/day (subject to change)',
     'settings.reset': 'Reset',
     'settings.privacy_title': 'About external service communication',
-    'settings.privacy_body': 'This app may send requests to the following external services:<br>・<strong>Google Gemini API</strong>: when AI parses a recipe (uses the configured API key)<br>・<strong>YouTube oEmbed API</strong>: when fetching titles from YouTube URLs<br>Both happen only when the user takes an action. Recipe data is stored only in this browser and never sent to any external server.',
+    'settings.privacy_body': 'This app may send requests to the following external services:<br>・<strong>Google Gemini API / OpenAI ChatGPT API</strong>: when AI extracts a recipe from an image (uses the configured API key — <strong>the image is uploaded</strong>)<br>・<strong>YouTube oEmbed API</strong>: when fetching titles from YouTube URLs (optional, can be disabled in settings)<br>Both happen only when the user takes an action. Recipe data is stored only in this browser\'s LocalStorage / IndexedDB and never sent to any external server.',
 
     // === Welcome Modal ===
     'welcome.title': '🍳 Welcome to Recipe Manager',
-    'welcome.intro': 'Just paste text or a URL — AI will automatically extract the recipe. All data is stored in your browser.',
-    'welcome.feat1': '✅ Local-first (no external server)',
+    'welcome.intro': 'A recipe app that auto-fills from screenshots and images. All data is stored only in your browser.',
+    'welcome.feat1': '✅ Local-first (recipe data never leaves your browser)',
     'welcome.feat2': '✅ PWA support (add to home screen)',
     'welcome.feat3': '✅ Japanese / English UI',
     'welcome.feat4': '✅ JSON export & backup',
-    'welcome.ai_title': '🤖 To use AI auto-parsing',
-    'welcome.ai_body': 'Set up a Google Gemini (free tier available) or ChatGPT API key, and you can extract recipes from any URL automatically. You can also add recipes manually without an API key.',
+    'welcome.ai_title': '🤖 To use image-to-recipe auto-fill',
+    'welcome.ai_body': 'Set up a Google Gemini (free tier available) or ChatGPT API key, and AI will extract recipe details from a screenshot of any recipe video or page. You can also add recipes manually without an API key.',
     'welcome.btn_setup': '⚙ Set up AI key',
     'welcome.btn_skip': 'Start manually →',
 
@@ -1816,11 +1842,12 @@ function openAddModal() {
   clearUrlStatus();
   resetParseSection();
   dismissClipboardBanner();
+  dismissClipboardImageBanner();
   addIngredientRow();
   openModal('add-modal');
-  // クリップボードに URL があれば検出して取り込み提案
+  // クリップボードに画像 or URL があれば取り込み提案
   // user gesture が必要なので openModal 直後に同期チェーンで実行
-  tryDetectClipboardUrl();
+  tryDetectClipboardContent();
 }
 
 function editRecipe() {
@@ -2068,27 +2095,95 @@ function handleQuickAction() {
   return false;
 }
 
-// ===== CLIPBOARD URL DETECTION =====
-// 追加モーダルを開いた瞬間にクリップボードを覗いて、URL があれば取り込み提案
+// ===== CLIPBOARD DETECTION (URL + IMAGE) =====
+// 追加モーダルを開いた瞬間にクリップボードを覗いて、URL か画像があれば取り込み提案
 let _clipboardDetectedUrl = null;
+let _clipboardDetectedImageBlob = null;
+let _clipboardImageBannerThumbUrl = null; // blob: URL を後で revokeObjectURL するため保持
 
-// クリップボードの中身が URL なら取り込みバナーを出す
-// 注意：navigator.clipboard.readText() は user gesture が必要。openAddModal のような
-// onclick 由来の呼び出しから連続実行する必要がある
-function tryDetectClipboardUrl() {
-  if (!navigator.clipboard || !navigator.clipboard.readText) return;
-  navigator.clipboard.readText().then(text => {
-    if (!text) return;
-    const trimmed = text.trim();
-    // URL らしさを判定（http/https のみ）
-    if (!/^https?:\/\/\S+/i.test(trimmed)) return;
-    // URL 欄に既に同じ URL が入っていればスキップ
-    const currentUrl = (document.getElementById('f-url').value || '').trim();
-    if (currentUrl === trimmed) return;
-    showClipboardBanner(trimmed);
-  }).catch(() => {
-    // permission 拒否・user gesture 切れ等は静かに諦める
-  });
+// クリップボードを覗き、画像があれば画像バナー、URL があれば URL バナーを出す。
+// 画像は読み取り意図が明確（スクショ直後など）なので優先する。
+// navigator.clipboard.read() は image/text を一度に取得できる（ただし user gesture 必須）。
+// 非対応ブラウザでは readText() にフォールバック（URL 検知のみ機能）。
+async function tryDetectClipboardContent() {
+  if (!navigator.clipboard) return;
+  // モダンな read() があれば画像も検知できる
+  if (navigator.clipboard.read) {
+    try {
+      const items = await navigator.clipboard.read();
+      // 1巡目: 画像を優先して探す
+      for (const item of items) {
+        const imageType = (item.types || []).find(t => t.startsWith('image/'));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          showClipboardImageBanner(blob);
+          return; // 画像見つけたら URL は無視
+        }
+      }
+      // 2巡目: 画像なし → text/plain で URL チェック
+      for (const item of items) {
+        if ((item.types || []).includes('text/plain')) {
+          const blob = await item.getType('text/plain');
+          const text = await blob.text();
+          maybeShowUrlBannerFromText(text);
+          return;
+        }
+      }
+      return;
+    } catch {
+      // read() が失敗（permission 等）→ readText フォールバック
+    }
+  }
+  // フォールバック：readText() のみ
+  if (navigator.clipboard.readText) {
+    try {
+      const text = await navigator.clipboard.readText();
+      maybeShowUrlBannerFromText(text);
+    } catch {
+      // 静かに諦める
+    }
+  }
+}
+
+function maybeShowUrlBannerFromText(text) {
+  if (!text) return;
+  const trimmed = text.trim();
+  if (!/^https?:\/\/\S+/i.test(trimmed)) return;
+  const currentUrl = (document.getElementById('f-url').value || '').trim();
+  if (currentUrl === trimmed) return;
+  showClipboardBanner(trimmed);
+}
+
+function showClipboardImageBanner(blob) {
+  _clipboardDetectedImageBlob = blob;
+  const banner = document.getElementById('clipboard-image-banner');
+  const thumb = document.getElementById('clipboard-image-banner-thumb');
+  if (!banner || !thumb) return;
+  // 既存の blob URL があれば解放してから新規生成
+  if (_clipboardImageBannerThumbUrl) URL.revokeObjectURL(_clipboardImageBannerThumbUrl);
+  _clipboardImageBannerThumbUrl = URL.createObjectURL(blob);
+  thumb.src = _clipboardImageBannerThumbUrl;
+  banner.style.display = 'flex';
+}
+
+function dismissClipboardImageBanner() {
+  _clipboardDetectedImageBlob = null;
+  const banner = document.getElementById('clipboard-image-banner');
+  if (banner) banner.style.display = 'none';
+  const thumb = document.getElementById('clipboard-image-banner-thumb');
+  if (thumb) thumb.src = '';
+  if (_clipboardImageBannerThumbUrl) {
+    URL.revokeObjectURL(_clipboardImageBannerThumbUrl);
+    _clipboardImageBannerThumbUrl = null;
+  }
+}
+
+function useClipboardImage() {
+  if (!_clipboardDetectedImageBlob) return;
+  const blob = _clipboardDetectedImageBlob;
+  // クリップボード由来の画像 blob には name が無いので「貼り付けた画像」ラベルを使う
+  processImageBlob(blob, t('parse.image_pasted_label'));
+  dismissClipboardImageBanner();
 }
 
 function showClipboardBanner(url) {
@@ -2967,7 +3062,7 @@ document.getElementById('f-url').addEventListener('input', function() {
     try {
       const title = await fetchYouTubeTitle(url);
       const titleInput = document.getElementById('f-title');
-      // タイトルが空か、前回の自動取得値の場合のみ上書き（原文のまま入れる。翻訳は AI Parse か 🔄 ボタンで）
+      // タイトルが空か、前回の自動取得値の場合のみ上書き（原文のまま入れる。翻訳は 🔄 ボタンで）
       if (!titleInput.value.trim() || titleWasAutoFilled) {
         titleInput.value = title;
         titleWasAutoFilled = true;

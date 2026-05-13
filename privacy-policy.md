@@ -1,6 +1,6 @@
 # プライバシーポリシー / Privacy Policy
 
-最終更新：2026年5月  
+最終更新：2026 年 5 月  
 Last updated: May 2026
 
 ---
@@ -8,37 +8,48 @@ Last updated: May 2026
 ## データの保存について
 
 本アプリが保存するデータはすべて **お使いのブラウザ内** にのみ保存されます。  
-外部サーバーへの送信・クラウドへのアップロードは行いません。
+外部サーバーへの送信・クラウドへのアップロードは行いません（後述の AI 抽出時の画像送信を除く）。
 
 | データ | 保存場所 | 外部送信 |
 |--------|----------|----------|
 | レシピデータ | ブラウザ内 IndexedDB | なし |
-| APIキー（Gemini / OpenAI） | ブラウザ内 LocalStorage | なし |
-| UI言語設定 | ブラウザ内 LocalStorage | なし |
+| API キー（Gemini / OpenAI） | ブラウザ内 LocalStorage | なし |
+| UI 言語設定 | ブラウザ内 LocalStorage | なし |
 | トークン使用量 | ブラウザ内 LocalStorage | なし |
 
 ---
 
 ## 外部サービスとの通信
 
-以下の機能を使用した場合のみ、外部APIへの通信が発生します。
+以下の機能を使用した場合のみ、外部 API への通信が発生します。
 
-### AI自動解析（任意）
+### 📷 画像からのレシピ抽出（任意）
 
-「✨ AIで解析」ボタンを押した場合、入力されたテキストまたはURLの内容が選択中のAIサービスに送信されます。
+「📷 この画像から抽出」ボタンを押した場合、**選択された画像が、設定中の AI サービス（Gemini Vision または OpenAI Vision）にアップロードされます**。  
+画像と一緒に、ユーザー入力のタイトル（既に入っていれば）と、ご自身の API キーが送信されます。
 
 | サービス | 送信内容 | プライバシーポリシー |
 |---------|---------|-----------------|
-| Google Gemini | 入力テキスト / URL内容・ユーザーのAPIキー | [Google AI](https://policies.google.com/privacy) |
-| OpenAI ChatGPT | 入力テキスト / URL内容・ユーザーのAPIキー | [OpenAI](https://openai.com/policies/privacy-policy) |
+| Google Gemini Vision | **画像データ**・既存タイトル（任意）・ユーザーの API キー | [Google AI](https://policies.google.com/privacy) |
+| OpenAI ChatGPT Vision | **画像データ**・既存タイトル（任意）・ユーザーの API キー | [OpenAI](https://openai.com/policies/privacy-policy) |
 
-> 各サービスのAPIキーはご自身で取得・管理してください。  
-> キーはブラウザのLocalStorageに保存され、本アプリの開発者には送信されません。
+> **送信されるのは「ボタンを押した時に選択中の画像 1 枚」のみ**です。  
+> アプリが自動的に画像を送信することはありません。  
+> 各サービスの API キーはご自身で取得・管理してください。キーはブラウザの LocalStorage に保存され、本アプリの開発者には送信されません。
 
-### YouTubeタイトル自動取得（任意）
+#### 注意：画像に映る個人情報について
 
-「YouTubeのURLからタイトルを自動取得する」設定が有効な場合、YouTubeのURLをYouTube oEmbed APIに送信してタイトルを取得します。  
-この機能は設定からオフにできます。
+スクショに個人情報（位置情報・連絡先・顔写真など）が映っている場合、それも AI サービスに送信されます。送信前にご確認ください。
+
+### 🔗 YouTube タイトル自動取得（任意）
+
+「YouTube の URL からタイトルを自動取得する」設定が有効な場合、入力された YouTube URL を YouTube oEmbed API に送信してタイトルを取得します。動画本文や個人情報は送信されません。  
+この機能は ⚙ 設定 からオフにできます。
+
+### 📋 クリップボード読み取り（ローカルのみ）
+
+追加モーダルを開くと、クリップボード内に URL／画像があるかを検出し「取り込みますか？」と提案します。  
+**この処理はすべてブラウザ内で完結し、外部へは一切送信されません**（ユーザーが「使う」ボタンを押した場合のみ、上記の各 API へ送信される可能性があります）。
 
 ---
 
@@ -62,7 +73,7 @@ Last updated: May 2026
 ## Privacy Policy (English)
 
 All data handled by this app is stored **only within your browser**.  
-No data is sent to external servers or uploaded to the cloud.
+No data is sent to external servers or uploaded to the cloud, except for images uploaded for AI extraction (described below).
 
 | Data | Storage | External Transfer |
 |------|---------|-------------------|
@@ -73,12 +84,30 @@ No data is sent to external servers or uploaded to the cloud.
 
 ### External API Communication
 
-Communication with external APIs occurs only when you use the following optional features:
+External API requests are made only when you use the following optional features:
 
-**AI Auto-Parse**: When you click "✨ AI Parse", the text or URL content you entered is sent to the selected AI service (Google Gemini or OpenAI) along with your API key for authentication. Your API key is stored in your browser's LocalStorage and is never sent to the app developer.
+**📷 Recipe extraction from image**: When you click "📷 Extract from this image", **the selected image is uploaded to the configured AI service (Google Gemini Vision or OpenAI Vision)**, together with the existing title (if any) and your API key.
 
-**YouTube Title Fetch**: When enabled, YouTube URLs are sent to the YouTube oEmbed API to retrieve video titles. This can be disabled in Settings.
+| Service | Uploaded data | Privacy policy |
+|---------|---------------|----------------|
+| Google Gemini Vision | **Image** · existing title (if any) · your API key | [Google AI](https://policies.google.com/privacy) |
+| OpenAI ChatGPT Vision | **Image** · existing title (if any) · your API key | [OpenAI](https://openai.com/policies/privacy-policy) |
+
+> Only the single image selected when you press the button is sent. The app does not auto-upload images.  
+> Your API key is your own and is stored in your browser's LocalStorage; it is never sent to the app developer.
+
+#### Note about personal information in images
+
+If your screenshot contains personal information (location, contacts, faces, etc.), that will also be sent to the AI service. Please review the image before extracting.
+
+**🔗 YouTube title fetch**: When enabled, YouTube URLs are sent to the YouTube oEmbed API to retrieve video titles. Only the URL is sent; no video body or personal info. This can be disabled in Settings.
+
+**📋 Clipboard reading (local only)**: When you open the add-recipe modal, the app checks your clipboard for a URL or image and offers to import it. This stays entirely inside your browser; nothing is sent externally unless you tap "Use" (which then triggers the API call above).
 
 ### Analytics & Tracking
 
 This app does not collect any analytics, advertising, or tracking data.
+
+### Contact
+
+Questions or concerns: [GitHub Issues](https://github.com/assistantc-C/recipe-manager/issues)

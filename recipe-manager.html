@@ -1156,6 +1156,28 @@
   </div>
 </div>
 
+<!-- ===== EXPORT GUIDE MODAL (初回エクスポート時のみ) ===== -->
+<div class="modal-overlay" id="export-guide-modal" onclick="handleOverlayClick(event,'export-guide-modal')">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <h2 data-i18n="export_guide.title">📥 エクスポートします</h2>
+      <button class="modal-close" onclick="closeModal('export-guide-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p data-i18n="export_guide.intro" style="margin-bottom:14px;line-height:1.7">レシピをJSONファイルとして書き出します。バックアップや別端末への移行に使えます。</p>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;line-height:1.7;margin-bottom:12px">
+        <strong data-i18n="export_guide.tip_title">💡 おすすめの保存先</strong>
+        <p data-i18n="export_guide.tip_body" style="margin-top:6px;font-size:13px;color:var(--text-muted)">iPhone：「ファイル」アプリ →「このiPhone内」<br>Android：「ダウンロード」フォルダ<br>PC：分かりやすい場所（デスクトップ等）</p>
+      </div>
+      <p data-i18n="export_guide.reimport_hint" style="font-size:12px;color:var(--text-muted);line-height:1.6">※ 次回もここに保存しておくと、インポート時にも見つけやすくなります。</p>
+    </div>
+    <div class="modal-footer" style="flex-direction:column;gap:8px">
+      <button class="btn btn-primary" style="width:100%" onclick="confirmExportGuide()" data-i18n="export_guide.btn_continue">続ける</button>
+      <button class="btn btn-ghost" style="width:100%" onclick="closeModal('export-guide-modal')" data-i18n="action.cancel">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo-btn" style="display:none" onclick="undoDelete()" data-i18n="action.undo">元に戻す</button></div>
 
 <script>
@@ -1174,6 +1196,12 @@ const I18N = {
     'action.export_tip': 'レシピをJSONファイルに書き出す',
     'action.import': 'インポート',
     'action.import_tip': 'JSONファイルからレシピを読み込む',
+    'export_guide.title': '📥 エクスポートします',
+    'export_guide.intro': 'レシピをJSONファイルとして書き出します。バックアップや別端末への移行に使えます。',
+    'export_guide.tip_title': '💡 おすすめの保存先',
+    'export_guide.tip_body': 'iPhone：「ファイル」アプリ →「このiPhone内」<br>Android：「ダウンロード」フォルダ<br>PC：分かりやすい場所（デスクトップ等）',
+    'export_guide.reimport_hint': '※ 次回もここに保存しておくと、インポート時にも見つけやすくなります。',
+    'export_guide.btn_continue': '続ける',
     'settings.title': '設定',
     'search.placeholder': 'タイトル・メモで検索...',
     'filter.all_sources': 'すべてのソース',
@@ -1324,6 +1352,12 @@ const I18N = {
     'action.export_tip': 'Export recipes to a JSON file',
     'action.import': 'Import',
     'action.import_tip': 'Import recipes from a JSON file',
+    'export_guide.title': '📥 Export recipes',
+    'export_guide.intro': 'Your recipes will be saved as a JSON file. Use it for backup or to move to another device.',
+    'export_guide.tip_title': '💡 Recommended save location',
+    'export_guide.tip_body': 'iPhone: Files app → "On My iPhone"<br>Android: Downloads folder<br>PC: Somewhere easy to find (e.g. Desktop)',
+    'export_guide.reimport_hint': '* Saving to the same place next time makes import easier.',
+    'export_guide.btn_continue': 'Continue',
     'settings.title': 'Settings',
     'search.placeholder': 'Search by title or memo...',
     'filter.all_sources': 'All sources',
@@ -1675,6 +1709,21 @@ function dismissBackupBanner() {
 }
 
 function exportRecipes() {
+  // 初回エクスポート時のみ保存先ガイドを表示
+  if (!localStorage.getItem(EXPORT_GUIDE_SEEN_STORAGE)) {
+    openModal('export-guide-modal');
+    return;
+  }
+  doExportRecipes();
+}
+
+function confirmExportGuide() {
+  localStorage.setItem(EXPORT_GUIDE_SEEN_STORAGE, 'true');
+  closeModal('export-guide-modal');
+  doExportRecipes();
+}
+
+function doExportRecipes() {
   const data = {
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -2364,6 +2413,7 @@ const CHATGPT_MODEL_STORAGE = 'recipe_manager_chatgpt_model';
 const YT_AUTOFETCH_STORAGE    = 'recipe_manager_yt_autofetch';
 const LAST_EXPORT_STORAGE     = 'recipe_manager_last_export';
 const BACKUP_DISMISS_STORAGE  = 'recipe_manager_backup_dismissed';
+const EXPORT_GUIDE_SEEN_STORAGE = 'recipe_manager_export_guide_seen';
 
 function loadYtAutoFetch() {
   const v = localStorage.getItem(YT_AUTOFETCH_STORAGE);

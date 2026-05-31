@@ -649,7 +649,14 @@
     padding: 12px 14px;
     border-radius: 8px;
     margin-bottom: 20px;
+    word-break: break-word;
   }
+  .detail-memo a {
+    color: var(--primary);
+    text-decoration: underline;
+    word-break: break-all;
+  }
+  .detail-memo a:hover { opacity: 0.8; }
 
   .serving-adjuster {
     background: var(--surface2);
@@ -2014,7 +2021,7 @@ function openDetail(id) {
   const memoWrap = document.getElementById('detail-memo-wrap');
   if (r.memo) {
     memoWrap.style.display = 'block';
-    memoWrap.textContent = r.memo;
+    memoWrap.innerHTML = autoLinkifyText(r.memo);
   } else {
     memoWrap.style.display = 'none';
   }
@@ -2353,6 +2360,18 @@ function undoDelete() {
 // ===== UTIL =====
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// メモ欄等のテキスト内の http(s) URL を <a> に自動変換する。
+// 改行は <br> 化、URL 末尾の句読点（。、, .）は除外して見やすく。
+function autoLinkifyText(s) {
+  const escaped = escHtml(s ?? '');
+  const urlRegex = /(https?:\/\/[^\s<]+?)([.,。、)\]]?)(?=\s|$|<br>)/g;
+  return escaped
+    .replace(/\r?\n/g, '<br>')
+    .replace(urlRegex, (m, url, trail) =>
+      `<a href="${url}" target="_blank" rel="noopener">${url}</a>${trail}`
+    );
 }
 
 function safeUrl(url) {

@@ -6,7 +6,7 @@ const CACHE_NAME = `recipe-manager-${CACHE_VERSION}`;
 // オフラインでも動かすためにキャッシュするファイル一覧
 const PRECACHE_URLS = [
   './',
-  './recipe-manager.html',
+  './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',

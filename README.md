@@ -2,7 +2,7 @@
 
 スクショ／画像からレシピを自動入力できる、ローカル完結・PWA 対応の Web アプリ
 
-**[🚀 今すぐ使う → https://assistantc-c.github.io/recipe-manager/recipe-manager.html](https://assistantc-c.github.io/recipe-manager/recipe-manager.html)**
+**[🚀 今すぐ使う → https://recipe-manager.pages.dev/](https://recipe-manager.pages.dev/)**
 
 ---
 
@@ -31,7 +31,7 @@
 
 ### 1. アプリを開く
 
-[https://assistantc-c.github.io/recipe-manager/recipe-manager.html](https://assistantc-c.github.io/recipe-manager/recipe-manager.html)
+[https://recipe-manager.pages.dev/](https://recipe-manager.pages.dev/)
 
 スマホは「ホーム画面に追加」でアプリとして使えます。
 

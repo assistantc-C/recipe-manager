@@ -1,10 +1,10 @@
 {
   "name": "レシピ管理アプリ",
   "short_name": "レシピ",
-  "description": "JSONベースでデータポータビリティの高い、ローカル完結型のレシピ管理アプリ",
-  "id": "/recipe-manager/recipe-manager.html",
-  "start_url": "./recipe-manager.html",
-  "scope": "./",
+  "description": "スクショ／画像からレシピを自動入力する、ローカル完結・PWA 対応のレシピ管理アプリ",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#faf8f5",
@@ -25,7 +25,7 @@
     }
   ],
   "share_target": {
-    "action": "./recipe-manager.html",
+    "action": "/",
     "method": "GET",
     "enctype": "application/x-www-form-urlencoded",
     "params": {
@@ -39,7 +39,7 @@
       "name": "新しいレシピを追加",
       "short_name": "追加",
       "description": "レシピ追加フォームを直接開く",
-      "url": "./recipe-manager.html?action=add",
+      "url": "/?action=add",
       "icons": [
         { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
       ]

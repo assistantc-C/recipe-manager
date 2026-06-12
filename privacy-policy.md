@@ -1,7 +1,7 @@
 # プライバシーポリシー / Privacy Policy
 
-最終更新：2026 年 5 月  
-Last updated: May 2026
+最終更新：2026 年 6 月  
+Last updated: June 2026
 
 ---
 
@@ -41,6 +41,15 @@ Last updated: May 2026
 
 スクショに個人情報（位置情報・連絡先・顔写真など）が映っている場合、それも AI サービスに送信されます。送信前にご確認ください。
 
+### 🎬 YouTube 動画からのレシピ抽出（任意）
+
+「🎬 この動画からレシピを自動入力」ボタンを押した場合、**入力された YouTube の URL が、ご自身の API キーとともに Google（Gemini）に送信され、Gemini が動画の内容（映像・音声）を解析します**。  
+ユーザー入力のタイトル（既に入っていれば）も一緒に送信されます。送信されるのはボタンを押した時のみで、アプリが自動的に送信することはありません。
+
+| サービス | 送信内容 | プライバシーポリシー |
+|---------|---------|-----------------|
+| Google Gemini（動画理解） | **YouTube URL**・既存タイトル（任意）・ユーザーの API キー | [Google AI](https://policies.google.com/privacy) |
+
 ### 🔗 YouTube タイトル自動取得（任意）
 
 「YouTube の URL からタイトルを自動取得する」設定が有効な場合、入力された YouTube URL を YouTube oEmbed API に送信してタイトルを取得します。動画本文や個人情報は送信されません。  
@@ -56,7 +65,7 @@ Last updated: May 2026
 ## アクセス解析・トラッキング
 
 本アプリはアクセス解析・広告・トラッキングを一切行いません。  
-なお、ホスティングに使用している GitHub Pages は GitHub のプライバシーポリシーに従ったサーバーログを取得する場合があります。
+なお、ホスティングに使用している Cloudflare Pages は Cloudflare のプライバシーポリシーに従ったサーバーログを取得する場合があります。
 
 ---
 
@@ -99,6 +108,8 @@ External API requests are made only when you use the following optional features
 #### Note about personal information in images
 
 If your screenshot contains personal information (location, contacts, faces, etc.), that will also be sent to the AI service. Please review the image before extracting.
+
+**🎬 Recipe extraction from YouTube video**: When you click "🎬 Extract recipe from this video", **the entered YouTube URL is sent to Google (Gemini) together with your API key**, and Gemini analyzes the video content (visuals and audio). The existing title (if any) is also sent. Nothing is sent unless you press the button.
 
 **🔗 YouTube title fetch**: When enabled, YouTube URLs are sent to the YouTube oEmbed API to retrieve video titles. Only the URL is sent; no video body or personal info. This can be disabled in Settings.
 

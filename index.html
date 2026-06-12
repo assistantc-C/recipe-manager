@@ -884,8 +884,12 @@
         <label>URL <span style="font-size:12px;color:var(--text-muted);font-weight:normal" data-i18n="form.optional">（任意）</span></label>
         <input type="url" id="f-url" placeholder="https://...">
         <div class="field-error" id="error-url"></div>
-        <div class="form-hint" data-i18n="form.url_hint">YouTubeやWebサイトのURL（省略可）</div>
+        <div class="form-hint" data-i18n="form.url_hint">YouTube の URL なら、動画からレシピを自動入力できます（Gemini キー使用）</div>
         <div class="url-status" id="url-fetch-status"></div>
+        <div id="yt-parse-row" style="display:none;margin-top:8px">
+          <button class="btn btn-primary btn-sm" id="parse-yt-btn" type="button" onclick="runParseWithYouTube()" data-i18n="parse.yt_run">🎬 この動画からレシピを自動入力</button>
+          <div class="parse-status" id="parse-yt-status" style="margin-top:8px"></div>
+        </div>
       </div>
       <div class="form-group">
         <label>
@@ -1144,7 +1148,7 @@
       <h2 data-i18n="welcome.title">🍳 レシピ管理へようこそ</h2>
     </div>
     <div class="modal-body">
-      <p data-i18n="welcome.intro" style="margin-bottom:16px;line-height:1.7">スクショや画像からレシピを自動入力できるアプリ。データはすべてあなたのブラウザ内に保存されます。</p>
+      <p data-i18n="welcome.intro" style="margin-bottom:16px;line-height:1.7">YouTube の URL やスクショからレシピを自動入力できるアプリ。データはすべてあなたのブラウザ内に保存されます。</p>
       <ul style="list-style:none;padding:0;margin-bottom:20px;display:flex;flex-direction:column;gap:6px;font-size:14px">
         <li data-i18n="welcome.feat1">✅ ローカル完結（外部サーバーへの送信なし）</li>
         <li data-i18n="welcome.feat2">✅ PWA対応（ホーム画面に追加できる）</li>
@@ -1152,8 +1156,8 @@
         <li data-i18n="welcome.feat4">✅ JSONでエクスポート・バックアップ可</li>
       </ul>
       <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;line-height:1.7">
-        <strong data-i18n="welcome.ai_title">🤖 画像から自動入力を使うには</strong>
-        <p data-i18n="welcome.ai_body" style="margin-top:6px;font-size:13px;color:var(--text-muted)">Google Gemini（無料枠あり）または ChatGPT の APIキーを設定すると、レシピ動画/サイトのスクショからタイトル・材料・手順を自動抽出できます。APIキーなしでも手動でレシピを登録できます。</p>
+        <strong data-i18n="welcome.ai_title">🤖 AI自動入力を使うには</strong>
+        <p data-i18n="welcome.ai_body" style="margin-top:6px;font-size:13px;color:var(--text-muted)">Google Gemini（無料枠あり）または ChatGPT の APIキーを設定すると、YouTube動画のURL（Geminiのみ）やレシピのスクショからタイトル・材料・手順を自動抽出できます。APIキーなしでも手動でレシピを登録できます。</p>
       </div>
     </div>
     <div class="modal-footer" style="flex-direction:column;gap:8px">
@@ -1175,6 +1179,10 @@
       <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;line-height:1.7;margin-bottom:12px">
         <strong data-i18n="export_guide.tip_title">💡 おすすめの保存先</strong>
         <p data-i18n="export_guide.tip_body" style="margin-top:6px;font-size:13px;color:var(--text-muted)">iPhone：「ファイル」アプリ →「このiPhone内」<br>Android：「ダウンロード」フォルダ<br>PC：分かりやすい場所（デスクトップ等）</p>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;line-height:1.7;margin-bottom:12px">
+        <strong data-i18n="export_guide.ai_tip_title">🤖 ちょい技：AIにレシピを活用してもらう</strong>
+        <p data-i18n="export_guide.ai_tip_body" style="margin-top:6px;font-size:13px;color:var(--text-muted)">書き出したJSONファイルをそのまま AI（ChatGPT・Gemini・Claude）に渡して、「この中から今夜の献立を提案して」「買い物リストにして」と頼む使い方もできます。</p>
       </div>
       <p data-i18n="export_guide.reimport_hint" style="font-size:12px;color:var(--text-muted);line-height:1.6">※ 次回もここに保存しておくと、インポート時にも見つけやすくなります。</p>
     </div>
@@ -1208,6 +1216,8 @@ const I18N = {
     'export_guide.tip_title': '💡 おすすめの保存先',
     'export_guide.tip_body': 'iPhone：「ファイル」アプリ →「このiPhone内」<br>Android：「ダウンロード」フォルダ<br>PC：分かりやすい場所（デスクトップ等）',
     'export_guide.reimport_hint': '※ 次回もここに保存しておくと、インポート時にも見つけやすくなります。',
+    'export_guide.ai_tip_title': '🤖 ちょい技：AIにレシピを活用してもらう',
+    'export_guide.ai_tip_body': '書き出したJSONファイルをそのまま AI（ChatGPT・Gemini・Claude）に渡して、「この中から今夜の献立を提案して」「買い物リストにして」と頼む使い方もできます。',
     'export_guide.btn_continue': '続ける',
     'settings.title': '設定',
     'search.placeholder': 'タイトル・メモで検索...',
@@ -1224,7 +1234,7 @@ const I18N = {
     // === Add/Edit Modal ===
     'modal.add_title': 'レシピを追加',
     'modal.edit_title': 'レシピを編集',
-    'form.url_hint': 'YouTubeやWebサイトのURL（省略可）',
+    'form.url_hint': 'YouTube の URL なら、動画からレシピを自動入力できます（Gemini キー使用）',
     'form.optional': '（任意）',
     'form.servings': '基準人数',
     'form.source': 'ソース',
@@ -1239,6 +1249,11 @@ const I18N = {
     'clipboard.image_use': 'この画像を使う',
     'clipboard.dismiss': '使わない',
     'url.fetching': 'タイトルを取得中...',
+    'parse.yt_run': '🎬 この動画からレシピを自動入力',
+    'parse.yt_loading': 'AIが動画を視聴中…（動画の長さにより数十秒〜1分ほどかかります）',
+    'parse.yt_err_no_key': 'YouTube動画の取り込みには Gemini APIキーが必要です。',
+    'parse.yt_err_not_yt': 'YouTube の URL を入力してください。',
+    'parse.yt_fallback_hint': 'うまく取れない場合：材料が映っている場面をスクショして、下の「📷 スクショ/画像から自動入力」をお試しください。',
     'url.fetched': '✓ タイトルを自動取得しました',
     'url.open_yt': '▶ YouTubeで開く',
     'url.err_restricted': '⚠ この動画は埋め込み制限のためタイトル自動取得できません（年齢制限・限定公開・埋め込み禁止など）。手動で入力してください',
@@ -1313,13 +1328,13 @@ const I18N = {
 
     // === Welcome Modal ===
     'welcome.title': '🍳 レシピ管理へようこそ',
-    'welcome.intro': 'スクショや画像からレシピを自動入力できるアプリ。データはすべてあなたのブラウザ内に保存されます。',
+    'welcome.intro': 'YouTube の URL やスクショからレシピを自動入力できるアプリ。データはすべてあなたのブラウザ内に保存されます。',
     'welcome.feat1': '✅ ローカル完結（レシピデータは外部送信なし）',
     'welcome.feat2': '✅ PWA対応（ホーム画面に追加できる）',
     'welcome.feat3': '✅ 日本語 / English 切替対応',
     'welcome.feat4': '✅ JSONでエクスポート・バックアップ可',
-    'welcome.ai_title': '🤖 画像から自動入力を使うには',
-    'welcome.ai_body': 'Google Gemini（無料枠あり）または ChatGPT の APIキーを設定すると、レシピ動画/サイトのスクショからタイトル・材料・手順を自動抽出できます。APIキーなしでも手動でレシピを登録できます。',
+    'welcome.ai_title': '🤖 AI自動入力を使うには',
+    'welcome.ai_body': 'Google Gemini（無料枠あり）または ChatGPT の APIキーを設定すると、YouTube動画のURL（Geminiのみ）やレシピのスクショからタイトル・材料・手順を自動抽出できます。APIキーなしでも手動でレシピを登録できます。',
     'welcome.btn_setup': '⚙ AIキーを設定して始める',
     'welcome.btn_skip': 'まずは手動で始める →',
 
@@ -1364,6 +1379,8 @@ const I18N = {
     'export_guide.tip_title': '💡 Recommended save location',
     'export_guide.tip_body': 'iPhone: Files app → "On My iPhone"<br>Android: Downloads folder<br>PC: Somewhere easy to find (e.g. Desktop)',
     'export_guide.reimport_hint': '* Saving to the same place next time makes import easier.',
+    'export_guide.ai_tip_title': '🤖 Pro tip: let AI use your recipes',
+    'export_guide.ai_tip_body': 'You can hand the exported JSON file straight to an AI (ChatGPT / Gemini / Claude) and ask things like “suggest tonight’s dinner from these” or “turn these into a shopping list.”',
     'export_guide.btn_continue': 'Continue',
     'settings.title': 'Settings',
     'search.placeholder': 'Search by title or memo...',
@@ -1380,7 +1397,7 @@ const I18N = {
     // === Add/Edit Modal ===
     'modal.add_title': 'Add Recipe',
     'modal.edit_title': 'Edit Recipe',
-    'form.url_hint': 'YouTube or website URL (optional)',
+    'form.url_hint': 'Paste a YouTube URL to auto-fill the recipe from the video (uses your Gemini key)',
     'form.optional': '(optional)',
     'form.servings': 'Servings',
     'form.source': 'Source',
@@ -1395,6 +1412,11 @@ const I18N = {
     'clipboard.image_use': 'Use this image',
     'clipboard.dismiss': 'Dismiss',
     'url.fetching': 'Fetching title...',
+    'parse.yt_run': '🎬 Extract recipe from this video',
+    'parse.yt_loading': 'AI is watching the video… (can take up to a minute depending on length)',
+    'parse.yt_err_no_key': 'A Gemini API key is required to import from YouTube videos.',
+    'parse.yt_err_not_yt': 'Please enter a YouTube URL.',
+    'parse.yt_fallback_hint': 'If this fails: take a screenshot of the ingredients scene and use “📷 Auto-fill from a screenshot or image” below.',
     'url.fetched': '✓ Title auto-fetched',
     'url.open_yt': '▶ Open in YouTube',
     'url.err_restricted': '⚠ This video has embedding restricted (age-restricted, unlisted, or embed disabled). Please enter the title manually',
@@ -1469,13 +1491,13 @@ const I18N = {
 
     // === Welcome Modal ===
     'welcome.title': '🍳 Welcome to Recipe Manager',
-    'welcome.intro': 'A recipe app that auto-fills from screenshots and images. All data is stored only in your browser.',
+    'welcome.intro': 'A recipe app that auto-fills from YouTube URLs and screenshots. All data is stored only in your browser.',
     'welcome.feat1': '✅ Local-first (recipe data never leaves your browser)',
     'welcome.feat2': '✅ PWA support (add to home screen)',
     'welcome.feat3': '✅ Japanese / English UI',
     'welcome.feat4': '✅ JSON export & backup',
-    'welcome.ai_title': '🤖 To use image-to-recipe auto-fill',
-    'welcome.ai_body': 'Set up a Google Gemini (free tier available) or ChatGPT API key, and AI will extract recipe details from a screenshot of any recipe video or page. You can also add recipes manually without an API key.',
+    'welcome.ai_title': '🤖 To use AI auto-fill',
+    'welcome.ai_body': 'Set up a Google Gemini (free tier available) or ChatGPT API key, and AI will extract recipe details from a YouTube video URL (Gemini only) or a screenshot. You can also add recipes manually without an API key.',
     'welcome.btn_setup': '⚙ Set up AI key',
     'welcome.btn_skip': 'Start manually →',
 
@@ -1914,6 +1936,7 @@ function openAddModal() {
   document.getElementById('step-rows').innerHTML = '';
   document.getElementById('title-autofill-badge').style.display = 'none';
   clearUrlStatus();
+  updateYtParseRow('');
   resetParseSection();
   dismissClipboardBanner();
   dismissClipboardImageBanner();
@@ -1941,6 +1964,7 @@ function editRecipe() {
   document.getElementById('title-autofill-badge').style.display = 'none';
   document.getElementById('step-rows').innerHTML = '';
   clearUrlStatus();
+  updateYtParseRow(r.url || '');
   resetParseSection();
   (r.ingredients || []).forEach(ing => addIngredientRow(ing.name, ing.amount, ing.unit));
   if (!(r.ingredients || []).length) addIngredientRow();
@@ -2646,8 +2670,9 @@ async function handleParseSuccess(data, inputTokens, outputTokens, mode = 'text'
   await populateFromParsed(parsed);
   const tokenInfo = inputTokens ? `　<span style="color:var(--text-muted);font-size:12px">今回 ${(inputTokens+outputTokens).toLocaleString()} トークン / 累計 ${(cumulative.input+cumulative.output).toLocaleString()}</span>` : '';
   const successMsg = `✓ 解析完了（材料 ${(parsed.ingredients||[]).length}品・手順 ${(parsed.steps||[]).length}工程）${tokenInfo}`;
-  // 現状の取り込み経路は画像のみ（テキスト・URL経路は撤去済み・2026-05-12）
-  setImageParseStatus('success', successMsg);
+  // 取り込み経路：image（スクショ/画像）/ youtube（動画URL・2026-06-13 復活）
+  if (mode === 'youtube') setYtParseStatus('success', successMsg);
+  else setImageParseStatus('success', successMsg);
   return parsed;
 }
 
@@ -3133,6 +3158,116 @@ async function fetchYouTubeTitle(url) {
   return data.title || '';
 }
 
+// ===== YOUTUBE VIDEO → RECIPE（Gemini の動画理解・2026-06-13 追加） =====
+// YouTube の URL を Gemini にそのまま渡し（file_data.file_uri）、映像・音声・テロップから
+// レシピを抽出する。動画理解は Gemini のみ対応（プロバイダ設定に関わらず Gemini キーを使う）。
+
+function setYtParseStatus(type, msg) {
+  const el = document.getElementById('parse-yt-status');
+  if (!el) return;
+  el.className = 'parse-status ' + (type || '');
+  el.innerHTML = type === 'loading' ? `<div class="spinner"></div>${msg}` : msg;
+}
+
+function clearYtParseStatus() { setYtParseStatus('', ''); }
+
+// URL欄の内容に応じて 🎬 取り込みボタンの表示を切り替える
+function updateYtParseRow(url) {
+  const row = document.getElementById('yt-parse-row');
+  if (!row) return;
+  const isYt = !!url && url.startsWith('http') && isYouTubeUrl(url);
+  row.style.display = isYt ? 'block' : 'none';
+  if (!isYt) clearYtParseStatus();
+}
+
+function buildRecipeVideoPrompt(existingTitle) {
+  const lang = loadLang();
+  const trimmedTitle = (existingTitle || '').trim();
+
+  if (lang === 'en') {
+    const titleSection = trimmedTitle
+      ? `\nExisting title (already filled by user or auto-fetched): "${trimmedTitle}"\n→ If the video clearly states a recipe name, use that. Otherwise, translate this existing title to English.\n`
+      : '';
+    return `Watch the attached cooking video and extract the recipe.${titleSection}
+
+Use everything available: spoken narration, on-screen text/captions, and the visuals.
+If the video contains multiple recipes, choose the main one.
+If something cannot be determined, return an empty string or null.
+
+Extraction rules:
+- title: recipe name. Empty string if absolutely nothing.
+- servings: integer only. null if not mentioned.
+- ingredients[].name: ingredient name in English.
+- ingredients[].amount: pure number only. Use null for vague amounts like "to taste".
+- ingredients[].unit: unit (e.g. "g", "ml", "tbsp", "tsp", "piece"). Empty string if none.
+- steps: cooking steps in order, concise, in English.
+
+IMPORTANT: Output ALL strings (title, ingredient names, units, steps) in English. Translate from the source language if needed.`;
+  }
+  // ja (default)
+  const titleSection = trimmedTitle
+    ? `\n既存タイトル（ユーザー入力 or 自動取得済み）: "${trimmedTitle}"\n→ 動画内に明確なレシピ名があればそれを優先。なければこの既存タイトルを日本語に翻訳して使う。\n`
+    : '';
+  return `添付の料理動画を視聴して、レシピ情報を抽出してください。${titleSection}
+
+音声ナレーション・画面内のテロップや字幕・映像など、使えるものはすべて使ってください。
+複数のレシピが含まれる場合は、最も主要な1つを選んでください。
+判断できない項目は空文字 or null で返してください。
+
+抽出ルール:
+- title: レシピ名。何もなければ空文字
+- servings: 「2人分」「4人前」などから整数のみ抽出。言及がなければ null
+- ingredients[].name: 材料名を日本語で
+- ingredients[].amount: 純粋な数値のみ。「適量」「少々」「お好みで」は null
+- ingredients[].unit: 単位（個・g・ml・大さじ等）。なければ空文字
+- steps: 作り方を順番通りの配列で、簡潔に日本語で
+
+重要: title・ingredients[].name・ingredients[].unit・steps はすべて日本語で出力してください。元の動画が他言語でも翻訳すること。`;
+}
+
+async function runParseWithYouTube() {
+  const url = document.getElementById('f-url').value.trim();
+  if (!isYouTubeUrl(url)) { setYtParseStatus('error', escHtml(t('parse.yt_err_not_yt'))); return; }
+
+  const apiKey = loadApiKey(); // 動画理解は Gemini のみ
+  if (!apiKey) {
+    setYtParseStatus('error', `${escHtml(t('parse.yt_err_no_key'))} &nbsp;<button onclick="openSettingsModal()" style="padding:3px 8px;border:1px solid currentColor;border-radius:4px;background:none;cursor:pointer;font-size:12px;color:inherit">${t('parse.open_settings')}</button>`);
+    return;
+  }
+
+  const btn = document.getElementById('parse-yt-btn');
+  btn.disabled = true;
+  setYtParseStatus('loading', escHtml(t('parse.yt_loading')));
+  try {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${loadModel()}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: buildRecipeVideoPrompt(document.getElementById('f-title').value) },
+            { file_data: { file_uri: normalizeYouTubeUrl(url) } }
+          ]
+        }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: GEMINI_RECIPE_SCHEMA
+        }
+      })
+    });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err?.error?.message || `HTTP ${res.status}`); }
+    const data = await res.json();
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    await handleParseSuccess(raw, data.usageMetadata?.promptTokenCount || 0, data.usageMetadata?.candidatesTokenCount || 0, 'youtube');
+  } catch (e) {
+    // 失敗時は写真ルートへ誘導（限定公開/非公開動画・長尺・レート制限などで失敗し得る）
+    setYtParseStatus('error', `⚠ ${escHtml(e.message)}<br><span style="font-size:12px">${escHtml(t('parse.yt_fallback_hint'))}</span>`);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 // URLフィールドの変更でソース自動検出 ＋ YouTube タイトル自動取得
 document.getElementById('f-url').addEventListener('input', function() {
   const url = this.value.trim();
@@ -3141,6 +3276,7 @@ document.getElementById('f-url').addEventListener('input', function() {
 
   clearTimeout(oEmbedTimer);
   clearUrlStatus();
+  updateYtParseRow(url);
 
   if (!isYouTubeUrl(url) || !url.startsWith('http') || !loadYtAutoFetch()) return;
 

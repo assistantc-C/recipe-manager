@@ -858,6 +858,12 @@
   <div id="recipe-list"></div>
 </div>
 
+<footer style="text-align:center;padding:8px 20px 40px;color:var(--text-muted);font-size:12px;line-height:1.8">
+  <a href="https://github.com/assistantc-C/recipe-manager/blob/main/privacy-policy.md" target="_blank" rel="noopener" data-i18n="footer.privacy" style="color:var(--text-muted);text-decoration:underline">プライバシーポリシー</a>
+  <span style="margin:0 8px;opacity:0.5">·</span>
+  <a href="https://github.com/assistantc-C/recipe-manager/issues" target="_blank" rel="noopener" data-i18n="footer.contact" style="color:var(--text-muted);text-decoration:underline">お問い合わせ</a>
+</footer>
+
 <!-- ===== ADD/EDIT MODAL ===== -->
 <div class="modal-overlay" id="add-modal" onclick="handleOverlayClick(event,'add-modal')">
   <div class="modal">
@@ -1202,6 +1208,8 @@ const I18N = {
   ja: {
     'app.title': 'レシピ管理',
     'document.title': 'レシピ管理アプリ',
+    'footer.privacy': 'プライバシーポリシー',
+    'footer.contact': 'お問い合わせ',
     'form.title': 'タイトル',
     'form.title_autofilled': '自動取得',
     'form.title_placeholder': '例：簡単チャーハン',
@@ -1365,6 +1373,8 @@ const I18N = {
   en: {
     'app.title': 'Recipe Manager',
     'document.title': 'Recipe Manager',
+    'footer.privacy': 'Privacy Policy',
+    'footer.contact': 'Contact',
     'form.title': 'Title',
     'form.title_autofilled': 'auto-fetched',
     'form.title_placeholder': 'e.g. Simple Fried Rice',
